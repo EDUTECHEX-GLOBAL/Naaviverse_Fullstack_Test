@@ -62,6 +62,7 @@ export default function PartnerHome({ setispopular }) {
   const [isGuideCollapsed, setIsGuideCollapsed] = useState(true);
 
   const notifRef = useRef(null);
+  const guideNoteRef = useRef(null);
   const unread = notifications.filter(n => n.unread).length;
 
   const fetchNotifications = useCallback(async () => {
@@ -899,9 +900,18 @@ export default function PartnerHome({ setispopular }) {
 
       {/* ── TOGGLE NOTE: MINIMAL PATH GUIDE ── */}
       {showGuideNote && (
-        <div className={`ph-toggle-note ${isGuideCollapsed ? "ph-toggle-note--collapsed" : "ph-toggle-note--expanded"}`}>
+        <div
+          ref={guideNoteRef}
+          className={`ph-toggle-note ${isGuideCollapsed ? "ph-toggle-note--collapsed" : "ph-toggle-note--expanded"}`}
+        >
           <div className="ph-tn-bar">
-            <div className="ph-tn-bar-left" onClick={() => setIsGuideCollapsed(p => !p)}>
+            <div
+              className="ph-tn-bar-left"
+              role="button"
+              tabIndex={0}
+              onClick={() => setIsGuideCollapsed(p => !p)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setIsGuideCollapsed(p => !p); }}
+            >
               <span className="ph-tn-icon"><SvgSparkles size={16} /></span>
               <span className="ph-tn-title">How to create a path in 3 simple steps</span>
             </div>
@@ -1000,6 +1010,11 @@ export default function PartnerHome({ setispopular }) {
               onClick={() => {
                 setShowGuideNote(true);
                 setIsGuideCollapsed(false);
+                setTimeout(() => {
+                  if (guideNoteRef.current) {
+                    guideNoteRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                  }
+                }, 50);
               }}
               title="Show guide to create a path"
             >

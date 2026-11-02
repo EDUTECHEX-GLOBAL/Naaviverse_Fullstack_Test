@@ -860,3 +860,23 @@ body {
     display: none;
   }
 }
+
+@media (max-width: 1199.98px) {
+  .admin-nav-link {
+    color: #0f172a !important;
+    font-weight: 600 !important;
+
+    svg {
+      color: #0f172a !important;
+    }
+
+    &.active {
+      color: #1d4ed8 !important;
+      font-weight: 700 !important;
+
+      svg {
+        color: #1d4ed8 !important;
+      }
+    }
+  }
+}

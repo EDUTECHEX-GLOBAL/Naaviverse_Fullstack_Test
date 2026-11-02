@@ -7,7 +7,7 @@ const stepSchema = new mongoose.Schema({
     name: { type: String },
     description: { type: String, required: false },
     length: { type: Number, required: false },
-    cost: { type: String, enum: ["paid", "free"], required: false }, 
+    cost: { type: String, required: false }, 
 
     gradeData: [
         {
@@ -50,9 +50,9 @@ const stepSchema = new mongoose.Schema({
 micro_description: { type: String },
 micro_name: { type: String },
 micro_length: { type: String },
-micro_access: { type: String, enum: ["paid","free"], default: "free" },
+micro_access: { type: String, default: "free" },
 micro_instructions: { type: String },
-micro_cost: { type: String, enum: ['free','an number','vendors descrestion','paid'], default: 'free' },
+micro_cost: { type: String, default: 'free' },
 micro_chances: { type: String },
 micro_marketplace: { type: Array, default: [] }, // [OK] ADDED
 
@@ -60,9 +60,9 @@ micro_marketplace: { type: Array, default: [] }, // [OK] ADDED
 macro_description: { type: String },
 macro_name: { type: String },
 macro_length: { type: String },
-macro_access: { type: String, enum: ["paid","free"], default: "free" },
+macro_access: { type: String, default: "free" },
 macro_instructions: { type: String },
-macro_cost: { type: String, enum: ['free','an number','vendors descrestion','paid'], default: 'free' },
+macro_cost: { type: String, default: 'free' },
 macro_chances: { type: String },
 macro_marketplace: { type: Array, default: [] }, // [OK] ADDED
 
@@ -70,9 +70,9 @@ macro_marketplace: { type: Array, default: [] }, // [OK] ADDED
 nano_description: { type: String },
 nano_name: { type: String },
 nano_length: { type: String },
-nano_access: { type: String, enum: ["paid","free"], default: "free" },
+nano_access: { type: String, default: "free" },
 nano_instructions: { type: String },
-nano_cost: { type: String, enum: ['free','an number','vendors descrestion','paid'], default: 'free' },
+nano_cost: { type: String, default: 'free' },
 nano_chances: { type: String },
 nano_marketplace: { type: Array, default: [] }, // [OK] ADDED
 

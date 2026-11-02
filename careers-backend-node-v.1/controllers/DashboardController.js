@@ -246,15 +246,26 @@ const getAdminNotifications = async (req, res) => {
         if (latest.type === "market" || latest.type === "purchase") type = "purchase";
         else if (latest.type === "path" || latest.type === "step") type = "path";
 
-        const actor = act.actorName || act.actorEmail || (act.role === "partner" ? "Partner" : "User");
+        const isPartner = act.role === "partner" || (latest.title && /partner/i.test(latest.title));
+        const actor = act.actorName || act.actorEmail || (isPartner ? "Partner" : "User");
+
+        let targetTab = "activity";
+        if (type === "path") targetTab = "paths";
+        else if (type === "purchase") targetTab = "marketplace";
+        else if (isPartner) targetTab = "partnerActivity";
+        else targetTab = "activity";
+
         notifs.push({
           id: `act-${act._id}-${latest._id || Date.now()}`,
           type,
-          title: latest.title || (latest.type === "market" ? "Marketplace Activity" : "Live User Activity"),
+          role: act.role || (isPartner ? "partner" : "user"),
+          actorEmail: act.actorEmail || "",
+          targetId: act.actorId || act._id,
+          title: latest.title || (isPartner ? "Partner Activity" : latest.type === "market" ? "Marketplace Activity" : "Live User Activity"),
           desc: `${actor}: ${latest.desc || latest.title || "Active on platform"}`,
           time: formatTimeAgo(latest.createdAt || act.lastEventAt),
           rawDate: latest.createdAt || act.lastEventAt || new Date(),
-          targetTab: type === "path" ? "paths" : type === "purchase" ? "marketplace" : "activity",
+          targetTab,
         });
       }
     });

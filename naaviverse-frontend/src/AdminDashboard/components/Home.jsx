@@ -24,14 +24,17 @@ const HomeDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [trendData, setTrendData] = useState([]);
   const [isTablet, setIsTablet] = useState(false);
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
 
   useEffect(() => {
-    const checkTablet = () => {
-      setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1200);
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsTablet(width >= 768 && width < 1200);
+      setIsMobileOrTablet(width < 1200);
     };
-    checkTablet();
-    window.addEventListener("resize", checkTablet);
-    return () => window.removeEventListener("resize", checkTablet);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -177,10 +180,19 @@ const HomeDashboard = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eef1f7" vertical={false} />
-                <XAxis dataKey="month" tick={{ fill: '#9aa1b5', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#9aa1b5', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: isMobileOrTablet ? '#0f172a' : '#9aa1b5', fontSize: isMobileOrTablet ? 11 : 10, fontWeight: isMobileOrTablet ? 600 : 400 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: isMobileOrTablet ? '#0f172a' : '#9aa1b5', fontSize: isMobileOrTablet ? 11 : 10, fontWeight: isMobileOrTablet ? 600 : 400 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px', padding: '6px 10px', border: '1px solid #e7ebf1' }} />
-                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '6px' }} />
+                <Legend wrapperStyle={{ fontSize: isMobileOrTablet ? '11px' : '10px', paddingTop: '6px', color: isMobileOrTablet ? '#0f172a' : undefined }} />
                 <Area type="monotone" dataKey="contacts" name="Contacts" stroke="#3E7BFA" strokeWidth={2} fill="url(#contactsGradient)" />
                 <Area type="monotone" dataKey="visitors" name="Visitors" stroke="#1FA655" strokeWidth={2} fill="url(#visitorsGradient)" />
                 <Area type="monotone" dataKey="subscribers" name="Subscribers" stroke="#F5B324" strokeWidth={2} fill="url(#subscribersGradient)" />
@@ -213,7 +225,7 @@ const HomeDashboard = () => {
                   ))}
                 </Pie>
                 <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px', padding: '6px 10px', border: '1px solid #e7ebf1' }} />
-                <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '10.5px', paddingTop: '6px' }} />
+                <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: isMobileOrTablet ? '11px' : '10.5px', paddingTop: '6px', color: isMobileOrTablet ? '#0f172a' : undefined }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

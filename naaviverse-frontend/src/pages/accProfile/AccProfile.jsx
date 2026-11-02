@@ -1,3 +1,4 @@
+import CustomSelect from '../accDashbaoard/CustomSelect';
 /* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, array-callback-return */
 import React, { useState, useRef, useEffect, useContext, useMemo } from "react";
 import axios from "axios";
@@ -3070,11 +3071,21 @@ const AccProfile = () => {
                   <InputDivsTextArea1 heading="Naavi Bio *" placeholderText="Bio..." setFunc={setBrandDescription} funcValue={brandDescription} />
                   <InputDivsWithColorCode heading="Colour Code *" placeholderText="#000000" setFunc={setBrandColorCode} funcValue={brandColorCode} colorCode={brandColorCode} />
                   <div style={{ paddingTop: '30px' }}>Select Country *</div>
-                  <div className={styles.inputDivs} style={{ border: '1px solid #e7e7e7', borderRadius: '30px', fontSize: "13px", fontWeight: "500", paddingLeft: '10px' }}>
-                    <select name="country" style={{ border: "none", padding: '1rem', width: '90%', fontSize: "16px" }} onChange={(e) => setHeadquarter(e.target.value)}>
-                      <option value="">Click to Select</option>
-                      {countryApiValue?.map((item) => <option key={item.cca2} value={item?.name?.common}>{item?.name?.common}</option>)}
-                    </select>
+                  <div className="project-desktop-custom-select" style={{ marginTop: '8px' }}>
+                    <CustomSelect
+                      value={headquarter}
+                      onChange={(e) => setHeadquarter(e.target.value)}
+                      options={countryApiValue || []}
+                      placeholder="Click to Select"
+                    />
+                  </div>
+                  <div className="project-mobile-native-select">
+                    <div className={styles.inputDivs} style={{ border: '1px solid #e7e7e7', borderRadius: '30px', fontSize: "13px", fontWeight: "500", paddingLeft: '10px' }}>
+                      <select name="country" style={{ border: "none", padding: '1rem', width: '90%', fontSize: "16px" }} onChange={(e) => setHeadquarter(e.target.value)}>
+                        <option value="">Click to Select</option>
+                        {countryApiValue?.map((item) => <option key={item.cca2} value={item?.name?.common}>{item?.name?.common}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <InputDivsWithMT heading="What is your office address? *" placeholderText="Enter address..." setFunc={setBrandAddress} funcValue={brandAddress} />
                   <div style={{ marginTop: "3rem", marginBottom: "0.5rem", fontSize: "1.1rem" }}>Upload white profile picture *</div>
@@ -3110,10 +3121,20 @@ const AccProfile = () => {
           <div className="overall-div" style={{ height: "calc(100% - 10.5rem)" }}>
             <div className="each-action1"><div>{profileData?.country}</div></div>
             <div className="line-container"><div className="linee"></div><div className="new-txt">New</div><div className="linee"></div></div>
-            <div className="each-action1">
-              <select name="country" style={{ border: "none", padding: '1.5rem', width: '90%', fontSize: "16px" }} onChange={(e) => setNewCountry(e.target.value)}>
-                {countryApiValue?.map((item) => <option key={item.cca2} value={item?.name?.common}>{item?.name?.common}</option>)}
-              </select>
+            <div className="project-desktop-custom-select" style={{ margin: '12px 0' }}>
+              <CustomSelect
+                value={newCountry}
+                onChange={(e) => setNewCountry(e.target.value)}
+                options={countryApiValue || []}
+                placeholder="Click to Select"
+              />
+            </div>
+            <div className="project-mobile-native-select">
+              <div className="each-action1">
+                <select name="country" style={{ border: "none", padding: '1.5rem', width: '90%', fontSize: "16px" }} onChange={(e) => setNewCountry(e.target.value)}>
+                  {countryApiValue?.map((item) => <option key={item.cca2} value={item?.name?.common}>{item?.name?.common}</option>)}
+                </select>
+              </div>
             </div>
           </div>
           <div className="stepBtns" style={{ height: "4.5rem" }}><div style={{ opacity: newCountry ? "1" : "0.25", cursor: newCountry ? "pointer" : "not-allowed", background: "#59A2DD" }} onClick={() => { if (newCountry) editData("country", newCountry); }}>Submit Edit</div></div>

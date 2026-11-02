@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import CustomSelect from '../accDashbaoard/CustomSelect';
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useCoinContextData } from "../../context/CoinContext.js";
 import Skeleton from "react-loading-skeleton";
 import "./mypaths.scss";
@@ -10,8 +11,223 @@ import CurrentStep from "../CurrentStep/index.jsx";
 import { useStore } from "../../components/store/store.ts";
 import { useNavigate, useLocation } from "react-router-dom";
 import pathIcon from '../../assets/images/assets/naavi-icon2.webp';
-import { SvgCheck, SvgFire } from "../../utils/SvgIcons";
+import { SvgCheck, SvgFire, SvgClose } from "../../utils/SvgIcons";
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
+const ROLE_OPTIONS = [
+  { value: "", label: "Select role..." },
+  { value: "institution", label: "Institution" },
+  { value: "mentor", label: "Mentor" },
+  { value: "distributor", label: "Distributor" },
+  { value: "vendor", label: "Vendor" },
+];
+
+const ACCESS_OPTIONS = [
+  { value: "Free", label: "Free" },
+  { value: "Paid", label: "Paid" },
+  { value: "Subscription", label: "Subscription" },
+];
+
+// Clean, bounded, responsive dropdown select component for desktop and mobile
+const DropdownSelect = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  ariaLabel = "Select option",
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      document.addEventListener("touchstart", handleOutsideClick, { passive: true });
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const normalizedOptions = useMemo(() => {
+    return (options || []).map((opt) => {
+      if (typeof opt === "object" && opt !== null) {
+        return { value: opt.value, label: opt.label || opt.value };
+      }
+      return { value: opt, label: opt };
+    });
+  }, [options]);
+
+  const selectedOpt = normalizedOptions.find((o) => String(o.value) === String(value));
+  const isSelected = !!selectedOpt && selectedOpt.value !== "";
+  const displayLabel = selectedOpt && selectedOpt.value !== "" ? selectedOpt.label : placeholder;
+
+  return (
+    <div
+      ref={containerRef}
+      className={`admin-custom-select-container ${isOpen ? "is-open" : ""}`}
+      style={{
+        position: "relative",
+        width: "100%",
+        maxWidth: "100%",
+        boxSizing: "border-box",
+      }}
+    >
+      <button
+        type="button"
+        className="admin-custom-select-trigger"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen((prev) => !prev);
+        }}
+        aria-label={ariaLabel}
+        aria-expanded={isOpen}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "9px 12px",
+          border: isOpen ? "1.5px solid #2563eb" : "1.5px solid #e8ecf0",
+          borderRadius: 10,
+          fontSize: "0.85rem",
+          fontWeight: isSelected ? 500 : 400,
+          color: isSelected ? "#1e293b" : "#64748b",
+          background: "#fff",
+          outline: "none",
+          cursor: "pointer",
+          textAlign: "left",
+          boxSizing: "border-box",
+          transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+          boxShadow: isOpen ? "0 0 0 3px rgba(37, 99, 235, 0.1)" : "none",
+        }}
+      >
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            marginRight: 8,
+          }}
+        >
+          {displayLabel}
+        </span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#64748b"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s ease",
+            flexShrink: 0,
+          }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div
+          className="admin-custom-select-menu"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            right: 0,
+            width: "100%",
+            maxWidth: "100%",
+            boxSizing: "border-box",
+            background: "#ffffff",
+            border: "1.5px solid #e2e8f0",
+            borderRadius: 10,
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.06)",
+            zIndex: 1050,
+            overflowY: "auto",
+            maxHeight: "180px",
+            padding: "4px",
+          }}
+        >
+          {normalizedOptions.map((opt, idx) => {
+            const isOptSelected = String(value) === String(opt.value);
+            return (
+              <div
+                key={idx}
+                className={`admin-custom-select-option ${isOptSelected ? "selected" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                style={{
+                  padding: "8px 10px",
+                  fontSize: "0.82rem",
+                  fontWeight: isOptSelected ? 600 : 500,
+                  color: isOptSelected ? "#2563eb" : "#334155",
+                  background: isOptSelected ? "#eff6ff" : "transparent",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  transition: "background 0.15s ease, color 0.15s ease",
+                  userSelect: "none",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isOptSelected) {
+                    e.currentTarget.style.background = "#f8fafc";
+                    e.currentTarget.style.color = "#0f172a";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isOptSelected) {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "#334155";
+                  }
+                }}
+              >
+                <span>{opt.label}</span>
+                {isOptSelected && (
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#2563eb"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) => {
   const navigate = useNavigate();
@@ -393,6 +609,47 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
 
     return matchesName && matchesEmail && matchesSource;
   });
+
+  // ─── Pagination states & reset ────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [mypathsMenu, searchName, searchEmail, sourceTypeFilter]);
+
+  // ─── Pagination calculations ──────────────────────────────────
+  const totalPathsCount = filteredPartnerPathData?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(totalPathsCount / itemsPerPage));
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalPathsCount);
+  const paginatedPartnerPathData = filteredPartnerPathData?.slice(startIndex, endIndex) || [];
+
+  const handlePageChange = (newPage) => {
+    const page = Math.min(Math.max(1, newPage), totalPages);
+    setCurrentPage(page);
+    const container = document.querySelector(".dashboard-screens") || window;
+    container.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (safeCurrentPage > 3) pages.push("...");
+      const start = Math.max(2, safeCurrentPage - 1);
+      const end = Math.min(totalPages - 1, safeCurrentPage + 1);
+      for (let i = start; i <= end; i++) {
+        if (!pages.includes(i)) pages.push(i);
+      }
+      if (safeCurrentPage < totalPages - 2) pages.push("...");
+      if (!pages.includes(totalPages)) pages.push(totalPages);
+    }
+    return pages;
+  };
 
   // ─── Reset ───────────────────────────────────────────────────
   const resetPathAction = () => {
@@ -881,8 +1138,8 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                 onChange={e => setSearchName(e.target.value)}
               />
               {searchName && (
-                <button type="button" className="search-clear-btn" onClick={() => setSearchName("")} title="Clear">
-                  ×
+                <button type="button" className="search-clear-btn" onClick={() => setSearchName("")} title="Clear" aria-label="Clear search">
+                  <SvgClose size={9} strokeWidth={2.5} />
                 </button>
               )}
             </div>
@@ -899,8 +1156,8 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                 onChange={e => setSearchEmail(e.target.value)}
               />
               {searchEmail && (
-                <button type="button" className="search-clear-btn" onClick={() => setSearchEmail("")} title="Clear">
-                  ×
+                <button type="button" className="search-clear-btn" onClick={() => setSearchEmail("")} title="Clear" aria-label="Clear search">
+                  <SvgClose size={9} strokeWidth={2.5} />
                 </button>
               )}
             </div>
@@ -1038,7 +1295,7 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                 </div>
               ))
             ) : filteredPartnerPathData?.length > 0 ? (
-              filteredPartnerPathData.map((path, i) => (
+              paginatedPartnerPathData.map((path, i) => (
                 mypathsMenu === "Pending Paths" ? (
                   <div className="pending-path-card" key={i}>
                     <div className="pending-card-top">
@@ -1210,6 +1467,109 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                     Clear Filters
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* ─── PAGINATION CONTROLS ─── */}
+            {totalPathsCount > 0 && !loading && (
+              <div className="admin-paths-pagination">
+                <div className="paths-pagination-left">
+                  <span className="paths-pagination-info">
+                    Showing <strong>{startIndex + 1}</strong>–<strong>{endIndex}</strong> of <strong>{totalPathsCount}</strong> {totalPathsCount === 1 ? "path" : "paths"}
+                  </span>
+                  <div className="paths-per-page-selector">
+                    <label htmlFor="paths-per-page">Rows per page:</label>
+                    <div className="project-desktop-custom-select inline" style={{ width: "75px" }}>
+                      <CustomSelect
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                          setItemsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        options={[5, 10, 20, 50]}
+                        searchable={false}
+                      />
+                    </div>
+                    <div className="project-mobile-native-select inline">
+                      <select
+                        id="paths-per-page"
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                          setItemsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="paths-pagination-controls">
+                  <button
+                    type="button"
+                    className="pagination-btn pagination-nav-btn"
+                    disabled={safeCurrentPage === 1}
+                    onClick={() => handlePageChange(1)}
+                    title="First Page"
+                    aria-label="First page"
+                  >
+                    «
+                  </button>
+                  <button
+                    type="button"
+                    className="pagination-btn pagination-nav-btn"
+                    disabled={safeCurrentPage === 1}
+                    onClick={() => handlePageChange(safeCurrentPage - 1)}
+                    title="Previous Page"
+                    aria-label="Previous page"
+                  >
+                    ‹ Prev
+                  </button>
+
+                  <div className="pagination-pages-group">
+                    {getPageNumbers().map((p, idx) =>
+                      p === "..." ? (
+                        <span key={`dots-${idx}`} className="pagination-ellipsis">
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={p}
+                          type="button"
+                          className={`pagination-btn pagination-page-btn ${p === safeCurrentPage ? "active" : ""}`}
+                          onClick={() => handlePageChange(p)}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="pagination-btn pagination-nav-btn"
+                    disabled={safeCurrentPage === totalPages}
+                    onClick={() => handlePageChange(safeCurrentPage + 1)}
+                    title="Next Page"
+                    aria-label="Next page"
+                  >
+                    Next ›
+                  </button>
+                  <button
+                    type="button"
+                    className="pagination-btn pagination-nav-btn"
+                    disabled={safeCurrentPage === totalPages}
+                    onClick={() => handlePageChange(totalPages)}
+                    title="Last Page"
+                    aria-label="Last page"
+                  >
+                    »
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1636,9 +1996,9 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                 <div>
                   {/* Layer title */}
                   {currentLayerCfg && (
-                    <div style={{ marginBottom: "16px" }}>
-                      <h3 style={{ fontSize: "18px", fontWeight: "600" }}>{currentLayerCfg.viewName}</h3>
-                      <p style={{ color: "#64748b", fontSize: "13px" }}>{currentLayerCfg.viewDesc}</p>
+                    <div className="pp-layer-header" style={{ marginBottom: "16px" }}>
+                      <h3 className="pp-layer-title" style={{ fontSize: "18px", fontWeight: "600" }}>{currentLayerCfg.viewName}</h3>
+                      <p className="pp-layer-desc" style={{ color: "#64748b", fontSize: "13px" }}>{currentLayerCfg.viewDesc}</p>
                     </div>
                   )}
 
@@ -1751,14 +2111,13 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                     {/* Role */}
                     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                       <label className="pp-section-label" style={{ marginBottom: 0 }}>Role *</label>
-                      <select value={mpRole} onChange={e => setMpRole(e.target.value)}
-                        style={{ padding: "9px 12px", border: "1.5px solid #e8ecf0", borderRadius: 10, fontSize: "0.85rem", outline: "none", background: "#fff" }}>
-                        <option value="">Select role...</option>
-                        <option value="institution">Institution</option>
-                        <option value="mentor">Mentor</option>
-                        <option value="distributor">Distributor</option>
-                        <option value="vendor">Vendor</option>
-                      </select>
+                      <DropdownSelect
+                        value={mpRole}
+                        onChange={setMpRole}
+                        options={ROLE_OPTIONS}
+                        placeholder="Select role..."
+                        ariaLabel="Role"
+                      />
                     </div>
 
                     {/* Name */}
@@ -1772,15 +2131,16 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                     </div>
 
                     {/* Access + Cost */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div className="sm-form-row">
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                         <label className="pp-section-label" style={{ marginBottom: 0 }}>Access</label>
-                        <select value={mpAccess} onChange={e => setMpAccess(e.target.value)}
-                          style={{ padding: "9px 12px", border: "1.5px solid #e8ecf0", borderRadius: 10, fontSize: "0.85rem", outline: "none", background: "#fff" }}>
-                          <option value="Free">Free</option>
-                          <option value="Paid">Paid</option>
-                          <option value="Subscription">Subscription</option>
-                        </select>
+                        <DropdownSelect
+                          value={mpAccess}
+                          onChange={setMpAccess}
+                          options={ACCESS_OPTIONS}
+                          placeholder="Free"
+                          ariaLabel="Access"
+                        />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                         <label className="pp-section-label" style={{ marginBottom: 0 }}>Cost</label>

@@ -150,6 +150,15 @@ const AdminAccDashsidebar = ({
     localStorage.removeItem('adminSidebarCollapsed');
   }, []);
 
+  // Keep --admin-sidebar-width CSS variable in sync with collapsed state
+  useEffect(() => {
+    const width = collapsed ? '60px' : '210px';
+    document.documentElement.style.setProperty('--admin-sidebar-width', width);
+    return () => {
+      document.documentElement.style.removeProperty('--admin-sidebar-width');
+    };
+  }, [collapsed]);
+
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
       const next = !prev;

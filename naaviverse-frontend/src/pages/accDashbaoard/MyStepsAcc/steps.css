@@ -92,13 +92,13 @@
 }
 
 .responsive-select-desktop {
-  display: block;
+  display: none !important;
   width: 100%;
   box-sizing: border-box;
 }
 
 .responsive-select-mobile {
-  display: none;
+  display: block !important;
   width: 100%;
   position: relative;
   box-sizing: border-box;
@@ -216,8 +216,8 @@
 .responsive-select-trigger.active,
 .responsive-select-trigger:focus {
   outline: none;
-  border-color: #0d6b6e;
-  box-shadow: 0 0 0 3px rgba(13, 107, 110, 0.1);
+  border-color: #2a9d8f;
+  box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.12);
 }
 
 .responsive-select-text {
@@ -244,7 +244,7 @@
 
 .responsive-select-arrow.open {
   transform: rotate(180deg);
-  color: #0d6b6e;
+  color: #2a9d8f;
 }
 
 .responsive-select-menu {
@@ -254,21 +254,21 @@
   right: 0;
   width: 100%;
   max-width: 100%;
-  max-height: 180px;
+  max-height: 200px;
   overflow-y: auto;
   background: #ffffff;
-  border: 1px solid #dbe5ee;
+  border: 1.5px solid #2a9d8f;
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(10, 28, 42, 0.14);
-  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(15, 33, 55, 0.16);
+  z-index: 10000;
   padding: 4px;
   box-sizing: border-box;
 }
 
 .responsive-select-option {
-  padding: 8px 10px;
-  font-size: 0.83rem;
-  color: #1e3a4a;
+  padding: 7px 11px;
+  font-size: 12px;
+  color: #0f2137;
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
@@ -278,13 +278,13 @@
 }
 
 .responsive-select-option:hover {
-  background: #f0f7fb;
-  color: #0d6b6e;
+  background: rgba(42, 157, 143, 0.08);
+  color: #2a9d8f;
 }
 
 .responsive-select-option.selected {
-  background: #e6f3f4;
-  color: #0d6b6e;
+  background: rgba(42, 157, 143, 0.15);
+  color: #2a9d8f;
   font-weight: 600;
 }
 

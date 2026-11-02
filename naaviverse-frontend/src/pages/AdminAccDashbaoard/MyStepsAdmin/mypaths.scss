@@ -311,6 +311,186 @@ $pink-soft: rgba(99, 102, 241, 0.05);
   gap: 10px;
 }
 
+// ─── PAGINATION BAR ─────────────────────────────────────────────
+.admin-steps-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin: 6px 12px 16px;
+  font-family: 'Poppins', sans-serif !important;
+
+  .steps-pagination-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+
+    .steps-pagination-info {
+      font-size: 0.82rem;
+      color: #64748b;
+
+      strong {
+        color: #1e293b;
+        font-weight: 600;
+      }
+    }
+
+    .steps-per-page-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: #64748b;
+
+      label {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 500;
+      }
+
+      select {
+        padding: 4px 8px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #1e293b;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.15s ease;
+
+        &:hover, &:focus {
+          border-color: #6366f1;
+        }
+      }
+    }
+  }
+
+  .steps-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+
+    .pagination-pages-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pagination-btn {
+      min-width: 34px;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      font-family: inherit;
+
+      &:hover:not(:disabled):not(.active) {
+        background: #f1f5f9;
+        color: #0f172a;
+        border-color: #cbd5e1;
+      }
+
+      &.active {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: #ffffff;
+        border-color: transparent;
+        box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: #f8fafc;
+        color: #94a3b8;
+        border-color: #e2e8f0;
+      }
+    }
+
+    .pagination-nav-btn {
+      padding: 0 10px;
+      font-size: 0.8rem;
+    }
+
+    .pagination-page-btn {
+      width: 34px;
+      padding: 0;
+    }
+
+    .pagination-ellipsis {
+      padding: 0 4px;
+      color: #94a3b8;
+      font-weight: 600;
+      font-size: 0.85rem;
+      user-select: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    margin: 6px 10px 14px;
+
+    .steps-pagination-left {
+      width: 100%;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .steps-pagination-controls {
+      width: 100%;
+      justify-content: center;
+      gap: 4px;
+
+      .pagination-btn {
+        min-width: 30px;
+        height: 32px;
+        padding: 0 8px;
+        font-size: 0.78rem;
+      }
+
+      .pagination-page-btn {
+        width: 30px;
+        padding: 0;
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    .steps-pagination-left {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .steps-pagination-controls {
+      .pagination-nav-btn {
+        padding: 0 6px;
+      }
+    }
+  }
+}
+
+
 // ─── Step Card — mobile-first stacked ───────────────────────────
 .admin-step-card {
   display: flex;
@@ -488,6 +668,84 @@ $pink-soft: rgba(99, 102, 241, 0.05);
   flex-direction: column;
   overflow: hidden;
   animation: smSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+// Centering in content area next to sidebar across desktop & tablet (> 768px)
+@media (min-width: 769px) {
+  .sm-modal {
+    left: calc(50% + 115px);
+    width: min(520px, calc(100vw - 280px));
+    max-width: calc(100vw - 280px);
+  }
+
+  body:has(.dashboard-sidebar.collapsed) .sm-modal,
+  body:has(.partner-dashboard-sidebar.collapsed) .sm-modal,
+  body:has(.user-dashboard-sidebar.collapsed) .sm-modal {
+    left: calc(50% + 35px);
+    width: min(520px, calc(100vw - 100px));
+    max-width: calc(100vw - 100px);
+  }
+}
+
+// Tablet optimization: Surface Pro 10 (960x1440 portrait) and iPad Pro 13 (1024x1366 portrait)
+@media (min-width: 769px) and (max-width: 1100px) {
+  .sm-modal {
+    left: calc(50% + 115px) !important;
+    width: min(480px, calc(100vw - 270px)) !important;
+    max-width: calc(100vw - 270px) !important;
+  }
+
+  .sm-header {
+    padding: 13px 18px 11px !important;
+  }
+
+  .sm-chip {
+    padding: 8px 18px !important;
+  }
+
+  .sm-body {
+    padding: 14px 18px 18px !important;
+  }
+
+  body:has(.dashboard-sidebar.collapsed) .sm-modal,
+  body:has(.partner-dashboard-sidebar.collapsed) .sm-modal,
+  body:has(.user-dashboard-sidebar.collapsed) .sm-modal {
+    left: calc(50% + 35px) !important;
+    width: min(490px, calc(100vw - 100px)) !important;
+    max-width: calc(100vw - 100px) !important;
+  }
+}
+
+// Tablet & Laptop landscape: iPad Pro 13 landscape (1366x1024) and Surface Pro 10 landscape (1440x960)
+@media (min-width: 1101px) and (max-width: 1440px) {
+  .sm-modal {
+    left: calc(50% + 115px) !important;
+    width: min(520px, calc(100vw - 280px)) !important;
+    max-width: calc(100vw - 280px) !important;
+  }
+
+  .sm-header {
+    padding: 14px 20px 12px !important;
+  }
+
+  .sm-body {
+    padding: 16px 20px 20px !important;
+  }
+
+  body:has(.dashboard-sidebar.collapsed) .sm-modal,
+  body:has(.partner-dashboard-sidebar.collapsed) .sm-modal,
+  body:has(.user-dashboard-sidebar.collapsed) .sm-modal {
+    left: calc(50% + 35px) !important;
+  }
+}
+
+// Narrow tablet / phablet screens (<= 768px) where desktop sidebar is hidden
+@media (max-width: 768px) and (min-width: 600px) {
+  .sm-modal {
+    left: 50%;
+    width: min(480px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+  }
 }
 
 // ─── MODAL — Mobile: bottom sheet anchored to bottom of screen ───
@@ -1107,4 +1365,103 @@ body.admin-popup-open { overflow: hidden; }
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+// ─── RESPONSIVE TEXT HEIGHT & SPACING (MOBILE & TABLET ONLY) ─────────────────
+// Fix loose inherited line-height on mobile without touching desktop (> 1080px)
+@media (max-width: 1080px) {
+  .admin-pp-layer-header,
+  .pp-layer-header {
+    margin-bottom: 12px !important;
+  }
+
+  .admin-pp-layer-title,
+  .pp-layer-title {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+    margin: 0 0 6px 0 !important;
+  }
+
+  .admin-pp-layer-desc,
+  .pp-layer-desc {
+    font-size: 13px !important;
+    line-height: 1.38 !important;
+    margin: 0 !important;
+    word-break: break-word !important;
+  }
+
+  .sm-modal .admin-pp-body,
+  .pp-modal .pp-body {
+    p:not(.admin-pp-section-label):not(.pp-section-label) {
+      line-height: 1.4;
+    }
+  }
+}
+
+@media (max-width: 599px) {
+  .admin-pp-layer-header,
+  .pp-layer-header {
+    margin-bottom: 10px !important;
+  }
+
+  .admin-pp-layer-title,
+  .pp-layer-title {
+    font-size: 15px !important;
+    line-height: 1.22 !important;
+    margin: 0 0 5px 0 !important;
+  }
+
+  .admin-pp-layer-desc,
+  .pp-layer-desc {
+    font-size: 12.5px !important;
+    line-height: 1.35 !important;
+    margin: 0 !important;
+  }
+}
+
+// ─── Custom Select / Dropdown Boundaries (Desktop & Mobile) ───────────
+.admin-custom-select-container {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  .admin-custom-select-trigger {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .admin-custom-select-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
+    z-index: 1050;
+    overflow-y: auto;
+    max-height: 180px;
+    padding: 4px;
+  }
+
+  .admin-custom-select-option {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    border-radius: 6px;
+    cursor: pointer;
+    box-sizing: border-box;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }

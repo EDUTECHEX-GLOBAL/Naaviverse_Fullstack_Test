@@ -209,6 +209,33 @@
     }
   }
 
+  .subs-search-clear-btn {
+    background: #f1f5f9;
+    border: none;
+    color: #64748b;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+    margin-left: auto;
+
+    &:hover {
+      background: #fee2e2;
+      color: #dc2626;
+      transform: scale(1.08);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
   &:focus-within {
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);

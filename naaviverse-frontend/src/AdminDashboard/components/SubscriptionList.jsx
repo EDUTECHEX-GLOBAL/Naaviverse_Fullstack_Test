@@ -26,6 +26,7 @@ const SubscriptionList = () => {
   const [endDate, setEndDate] = useState(null);
   const [searchEmail, setSearchEmail] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [stats, setStats] = useState({ total: 0, recent: 0, uniqueDomains: 0 });
 
   const subscriptionsPerPage = 10;
@@ -99,18 +100,29 @@ const SubscriptionList = () => {
   const indexOfFirst = indexOfLast - subscriptionsPerPage;
   const currentSubscriptions = filteredSubscriptions.slice(indexOfFirst, indexOfLast);
 
-  const exportData = () => {
-    const data = filteredSubscriptions.map((sub, i) => ({
-      SNo: i + 1,
-      Email: sub.email,
-      SubscribedOn: dayjs(sub.createdAt).format('MMM DD, YYYY hh:mm A'),
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Subscriptions");
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const fileData = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(fileData, `Subscriptions_${dayjs().format('YYYY-MM-DD')}.xlsx`);
+  const exportData = async () => {
+    if (isExporting) return;
+    try {
+      setIsExporting(true);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const data = filteredSubscriptions.map((sub, i) => ({
+        SNo: i + 1,
+        Email: sub.email,
+        SubscribedOn: dayjs(sub.createdAt).format('MMM DD, YYYY hh:mm A'),
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Subscriptions");
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const fileData = new Blob([excelBuffer], { type: 'application/octet-stream' });
+      saveAs(fileData, `Subscriptions_${dayjs().format('YYYY-MM-DD')}.xlsx`);
+    } catch (err) {
+      console.error("Export error:", err);
+    } finally {
+      setTimeout(() => {
+        setIsExporting(false);
+      }, 500);
+    }
   };
 
   const clearFilters = () => {
@@ -135,13 +147,16 @@ const SubscriptionList = () => {
           <p className="subscription-list__subtitle">Manage and analyze subscriber data</p>
         </div>
         <div className="subscription-list__actions">
-          {hasFilters && (
-            <Button size="small" onClick={clearFilters} icon={<FiFilter size={11} />} className="btn-outline">
-              Clear
-            </Button>
-          )}
-          <Button size="small" onClick={exportData} icon={<FiDownload size={11} />} type="primary" className="btn-primary">
-            Export
+          <Button
+            size="small"
+            onClick={exportData}
+            icon={!isExporting ? <FiDownload size={11} /> : null}
+            loading={isExporting}
+            disabled={isExporting}
+            type="primary"
+            className={`btn-primary ${isExporting ? 'btn-exporting' : ''}`}
+          >
+            {isExporting ? 'Exporting...' : 'Export'}
           </Button>
         </div>
       </div>
@@ -202,6 +217,19 @@ const SubscriptionList = () => {
             allowClear
           />
         </div>
+        {hasFilters && (
+          <div className="filter-item filter-item--clear">
+            <div className="filter-label filter-label--empty">&nbsp;</div>
+            <Button
+              size="small"
+              onClick={clearFilters}
+              icon={<FiFilter size={11} />}
+              className="btn-outline filter-clear-btn"
+            >
+              Clear
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Stats bar */}

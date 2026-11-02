@@ -616,6 +616,11 @@ $proplus-btn-hover:   #fad6b0;
   &:hover {
     background: lighten($navy, 8%);
   }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed !important;
+  }
 }
 
 // Card Footer
@@ -668,6 +673,14 @@ $proplus-btn-hover:   #fad6b0;
   border: none;
   transition: all 0.15s;
   white-space: nowrap;
+
+  &:disabled,
+  &.loading {
+    opacity: 0.72;
+    cursor: not-allowed !important;
+    transform: none !important;
+    pointer-events: none;
+  }
 
   &--credits {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
@@ -730,6 +743,16 @@ $proplus-btn-hover:   #fad6b0;
 }
 
 .cuo-confirm-btns { display: flex; gap: 10px; }
+
+.cuo-spinner {
+  animation: cuoSpin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes cuoSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 // =============================================================================
 // COMPLETION / NEXT STEP BAR

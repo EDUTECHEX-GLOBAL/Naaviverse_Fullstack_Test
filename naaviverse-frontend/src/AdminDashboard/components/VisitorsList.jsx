@@ -36,6 +36,7 @@ const VisitorsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [stats, setStats] = useState({ total: 0, countries: 0, today: 0 });
 
   const visitorsPerPage = 10;
@@ -124,29 +125,40 @@ const VisitorsList = () => {
   const getPostal = (v) => (isLocalVisitor(v) ? EMPTY : val(v.postalCode));
   const getCountry = (v) => (isLocalVisitor(v) ? EMPTY : val(v.country));
 
-  const exportData = () => {
-    const data = filteredVisitors.map((v, i) => ({
-      SNo: i + 1,
-      IPAddress: v.ip,
-      City: getCity(v),
-      Region: getRegion(v),
-      PostalCode: getPostal(v),
-      Country: getCountry(v),
-      FullName: v.fullName || v.name,
-      Email: v.email,
-      Organization: v.organization,
-      AreaOfInterest: v.areaOfInterest,
-      ProjectStage: v.projectStage,
-      Phone: v.phone,
-      Message: v.message,
-      VisitedOn: dayjs(v.createdAt).format('MMM DD, YYYY hh:mm A'),
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Visitors");
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const fileData = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(fileData, `Visitors_${dayjs().format('YYYY-MM-DD')}.xlsx`);
+  const exportData = async () => {
+    if (isExporting) return;
+    try {
+      setIsExporting(true);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const data = filteredVisitors.map((v, i) => ({
+        SNo: i + 1,
+        IPAddress: v.ip,
+        City: getCity(v),
+        Region: getRegion(v),
+        PostalCode: getPostal(v),
+        Country: getCountry(v),
+        FullName: v.fullName || v.name,
+        Email: v.email,
+        Organization: v.organization,
+        AreaOfInterest: v.areaOfInterest,
+        ProjectStage: v.projectStage,
+        Phone: v.phone,
+        Message: v.message,
+        VisitedOn: dayjs(v.createdAt).format('MMM DD, YYYY hh:mm A'),
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Visitors");
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const fileData = new Blob([excelBuffer], { type: 'application/octet-stream' });
+      saveAs(fileData, `Visitors_${dayjs().format('YYYY-MM-DD')}.xlsx`);
+    } catch (err) {
+      console.error("Export error:", err);
+    } finally {
+      setTimeout(() => {
+        setIsExporting(false);
+      }, 500);
+    }
   };
 
   const clearFilters = () => {
@@ -174,13 +186,16 @@ const VisitorsList = () => {
           <p className="visitors-list__subtitle">Track and analyze website traffic</p>
         </div>
         <div className="visitors-list__actions">
-          {hasFilters && (
-            <Button size="small" onClick={clearFilters} icon={<FiFilter size={11} />} className="btn-outline">
-              Clear
-            </Button>
-          )}
-          <Button size="small" onClick={exportData} icon={<FiDownload size={11} />} type="primary" className="btn-primary">
-            Export
+          <Button
+            size="small"
+            onClick={exportData}
+            icon={!isExporting ? <FiDownload size={11} /> : null}
+            loading={isExporting}
+            disabled={isExporting}
+            type="primary"
+            className={`btn-primary ${isExporting ? 'btn-exporting' : ''}`}
+          >
+            {isExporting ? 'Exporting...' : 'Export'}
           </Button>
         </div>
       </div>
@@ -234,8 +249,8 @@ const VisitorsList = () => {
           <div className="filter-label"><FiGlobe /> Country</div>
           <Select
             size="small"
-            value={countryFilter}
-            onChange={setCountryFilter}
+            value={countryFilter || undefined}
+            onChange={(val) => setCountryFilter(val || '')}
             placeholder="All"
             className="filter-select"
             allowClear
@@ -258,6 +273,19 @@ const VisitorsList = () => {
             allowClear
           />
         </div>
+        {hasFilters && (
+          <div className="filter-item filter-item--clear">
+            <div className="filter-label filter-label--empty">&nbsp;</div>
+            <Button
+              size="small"
+              onClick={clearFilters}
+              icon={<FiFilter size={11} />}
+              className="btn-outline filter-clear-btn"
+            >
+              Clear
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Summary */}

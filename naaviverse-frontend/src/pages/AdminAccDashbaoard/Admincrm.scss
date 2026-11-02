@@ -16,6 +16,7 @@
   --acc-dark: #4f46e5;
   --acc-bg: #eef2ff;
   --acc-border: #c7d2fe;
+  --admin-sidebar-width: 210px;
 
   font-family: 'Poppins', sans-serif !important;
   background: var(--bg);
@@ -455,7 +456,7 @@
   inset: 0;
   background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(6px);
-  z-index: 1000;
+  z-index: 2000;
   animation: backdropIn .2s ease;
 
   @keyframes backdropIn {
@@ -467,18 +468,18 @@
 .apop-box {
   position: fixed;
   top: 50%;
-  left: 50%;
+  left: calc(var(--admin-sidebar-width, 210px) + (100vw - var(--admin-sidebar-width, 210px)) / 2);
   transform: translate(-50%, -50%);
-  width: 500px;
-  max-width: calc(100vw - 32px);
-  max-height: 80vh;
+  width: 480px;
+  max-width: calc(100vw - var(--admin-sidebar-width, 210px) - 48px);
+  max-height: 82vh;
   background: #ffffff;
   border-radius: 18px;
   box-shadow:
     0 24px 60px rgba(0,0,0,.18),
     0 8px 24px rgba(0,0,0,.1),
     0 0 0 1px rgba(255,255,255,.5);
-  z-index: 1001;
+  z-index: 2001;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -838,9 +839,11 @@
   }
 
   .apop-box {
-    width: calc(100vw - 24px);
-    max-height: 85vh;
-    border-radius: 16px;
+    left: 50% !important;
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: 85vh !important;
+    border-radius: 16px !important;
   }
 
   .apop-header {
@@ -851,5 +854,19 @@
 
   .apop-body {
     padding: 12px 14px;
+  }
+}
+
+/* ───────── TABLET (iPad Pro 13, Surface Pro 10: 769px - 1180px) ───────── */
+@media (max-width: 1180px) and (min-width: 769px) {
+  .apop-box {
+    left: calc(var(--admin-sidebar-width, 210px) + (100vw - var(--admin-sidebar-width, 210px)) / 2) !important;
+    width: min(460px, calc(100vw - var(--admin-sidebar-width, 210px) - 48px)) !important;
+    max-width: calc(100vw - var(--admin-sidebar-width, 210px) - 48px) !important;
+  }
+
+  .acrm-thead,
+  .acrm-row {
+    min-width: 720px;
   }
 }

@@ -190,12 +190,12 @@ const EPM_CSS = `
       position: relative;
     }
     .epm-select-desktop {
-      display: block;
+      display: none !important;
       width: 100%;
       box-sizing: border-box;
     }
     .epm-select-mobile {
-      display: none;
+      display: block !important;
       width: 100%;
       position: relative;
       box-sizing: border-box;
@@ -797,21 +797,6 @@ const OPTS = {
 const EpmSelect = ({ name, value, onChange, placeholder = "Select...", options = [] }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window !== "undefined") {
-      return window.innerWidth <= 768 || (window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768 || (window.matchMedia && window.matchMedia("(max-width: 768px)").matches));
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   useEffect(() => {
     const handleOutside = (e) => {
@@ -838,41 +823,41 @@ const EpmSelect = ({ name, value, onChange, placeholder = "Select...", options =
     return { label, value: str };
   });
 
-  // DESKTOP: Untouched 100% native select
-  if (!isMobile) {
-    return (
-      <select
-        className="epm-select"
-        name={name}
-        value={value}
-        onChange={onChange}
-      >
-        <option value="">{placeholder}</option>
-        {normOptions.map(opt => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  // MOBILE: Strictly bounded, compact custom in-DOM dropdown (native select omitted entirely)
   const selectedOpt = normOptions.find(o => String(o.value) === String(value));
   const displayText = selectedOpt ? selectedOpt.label : placeholder;
 
   return (
-    <div
-      className={`epm-select-wrap ${open ? "is-open" : ""}`}
-      ref={ref}
-      style={{
-        position: "relative",
-        width: "100%",
-        maxWidth: "100%",
-        boxSizing: "border-box",
-        zIndex: open ? 1050 : 1,
-      }}
-    >
+    <div className="epm-select-container">
+      {/* DESKTOP: 100% untouched native select */}
+      <div className="epm-select-desktop">
+        <select
+          className="epm-select"
+          name={name}
+          value={value}
+          onChange={onChange}
+        >
+          <option value="">{placeholder}</option>
+          {normOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* MOBILE: Strictly bounded, compact custom in-DOM dropdown */}
+      <div className="epm-select-mobile">
+        <div
+          className={`epm-select-wrap ${open ? "is-open" : ""}`}
+          ref={ref}
+          style={{
+            position: "relative",
+            width: "100%",
+            maxWidth: "100%",
+            boxSizing: "border-box",
+            zIndex: open ? 1050 : 1,
+          }}
+        >
       <button
         type="button"
         className={`epm-select-trigger ${open ? "open" : ""} ${!value ? "is-placeholder" : ""}`}
@@ -893,7 +878,7 @@ const EpmSelect = ({ name, value, onChange, placeholder = "Select...", options =
           fontSize: "0.76rem",
           color: value ? "#0d1b2a" : "#94a3b8",
           background: open ? "#ffffff" : "#f8fafc",
-          border: open ? "1.5px solid #0d9488" : "1.5px solid #e8ecf2",
+          border: open ? "1.5px solid #2a9d8f" : "1.5px solid #e8ecf2",
           borderRadius: "8px",
           padding: "6px 10px",
           minHeight: "34px",
@@ -901,7 +886,7 @@ const EpmSelect = ({ name, value, onChange, placeholder = "Select...", options =
           userSelect: "none",
           textAlign: "left",
           outline: "none",
-          boxShadow: open ? "0 0 0 2px rgba(13,148,136,0.12)" : "none",
+          boxShadow: open ? "0 0 0 3px rgba(42,157,143,0.12)" : "none",
           transition: "all 0.15s ease",
         }}
       >
@@ -953,7 +938,7 @@ const EpmSelect = ({ name, value, onChange, placeholder = "Select...", options =
             maxWidth: "100%",
             boxSizing: "border-box",
             background: "#ffffff",
-            border: "1.5px solid #0d9488",
+            border: "1.5px solid #2a9d8f",
             borderRadius: "8px",
             boxShadow: "0 6px 20px rgba(13, 27, 42, 0.14)",
             padding: "3px",
@@ -975,7 +960,7 @@ const EpmSelect = ({ name, value, onChange, placeholder = "Select...", options =
               fontFamily: "'Poppins', sans-serif",
               fontSize: "0.74rem",
               color: !value ? "#0d9488" : "#64748b",
-              background: !value ? "#e6f7f5" : "transparent",
+              background: !value ? "rgba(42, 157, 143, 0.15)" : "transparent",
               fontWeight: !value ? 600 : 400,
               padding: "6px 8px",
               borderRadius: "5px",
@@ -1004,9 +989,9 @@ const EpmSelect = ({ name, value, onChange, placeholder = "Select...", options =
                 style={{
                   fontFamily: "'Poppins', sans-serif",
                   fontSize: "0.74rem",
-                  color: isSelected ? "#ffffff" : "#334155",
-                  background: isSelected ? "#0d9488" : "transparent",
-                  fontWeight: isSelected ? 500 : 400,
+                  color: isSelected ? "#2a9d8f" : "#0f2137",
+                  background: isSelected ? "rgba(42, 157, 143, 0.15)" : "transparent",
+                  fontWeight: isSelected ? 600 : 400,
                   padding: "6px 8px",
                   borderRadius: "5px",
                   cursor: "pointer",
@@ -1024,6 +1009,8 @@ const EpmSelect = ({ name, value, onChange, placeholder = "Select...", options =
           })}
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 };

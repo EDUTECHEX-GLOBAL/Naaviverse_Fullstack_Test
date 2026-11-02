@@ -637,15 +637,15 @@ $radius-pill: 100px;
   }
 }
 
-// Desktop view remains native (min-width: 1025px)
+// Desktop view uses modern custom dropdowns (matching reference)
 @media (min-width: 1025px) {
   .custom-select-wrapper,
   .duration-custom-wrapper {
-    display: none !important;
+    display: block !important;
   }
   .native-select-desktop,
   .duration-native-select {
-    display: block !important;
+    display: none !important;
   }
 }
 

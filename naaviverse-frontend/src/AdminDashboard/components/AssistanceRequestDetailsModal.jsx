@@ -1,3 +1,4 @@
+import CustomSelect from '../../pages/accDashbaoard/CustomSelect';
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import "./MarketplaceAssistance.scss";
@@ -181,7 +182,20 @@ export default function AssistanceRequestDetailsModal({
         <div className="aadd-toolbar">
           <div className="aadd-status-select-wrap">
             <span className="status-lbl">Update Status:</span>
-            <select
+            <div className="project-desktop-custom-select inline" style={{ minWidth: "160px" }}>
+              <CustomSelect
+                value={request.status}
+                onChange={(e) => handleStatusUpdate(e.target.value)}
+                options={[
+                  { label: "Pending", value: "pending" },
+                  { label: "In Review / Chatting", value: "reviewing" },
+                  { label: "Resolved", value: "resolved" },
+                ]}
+                searchable={false}
+              />
+            </div>
+            <div className="project-mobile-native-select inline">
+              <select
               className="status-dropdown"
               value={request.status}
               onChange={(e) => handleStatusUpdate(e.target.value)}
@@ -191,6 +205,7 @@ export default function AssistanceRequestDetailsModal({
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </select>
+            </div>
           </div>
 
           <button

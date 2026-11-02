@@ -70,14 +70,23 @@ const FEEDBACK_ACTIONS = [
 
 const FeedbackStrip = ({ value = {}, onChange }) => {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(value?.action || "");
+  const [selected, setSelected] = useState(
+    value?.action === "comment" && !value?.comment?.trim() ? "" : (value?.action || "")
+  );
   const [commentText, setCommentText] = useState(value?.comment || "");
   const showComment = selected === "comment";
 
   // Sync external value when prop changes (e.g. on step change or db sync)
   useEffect(() => {
-    setSelected(value?.action || "");
-    setCommentText(value?.comment || "");
+    const act = value?.action || "";
+    const comm = value?.comment || "";
+    if (act === "comment" && !comm.trim()) {
+      setSelected("");
+      setCommentText("");
+    } else {
+      setSelected(act);
+      setCommentText(comm);
+    }
   }, [value?.action, value?.comment]);
 
   const handleAction = (action) => {
@@ -98,6 +107,7 @@ const FeedbackStrip = ({ value = {}, onChange }) => {
   const handleSubmitComment = (e) => {
     e.stopPropagation();
     const finalComment = (commentText || "").trim();
+    if (!finalComment) return;
     onChange({
       action: "comment",
       comment: finalComment,
@@ -111,23 +121,46 @@ const FeedbackStrip = ({ value = {}, onChange }) => {
     e.stopPropagation();
     setCommentText("");
     onChange({
-      action: selected === "comment" ? "comment" : selected,
+      action: selected === "comment" ? "" : selected,
       comment: "",
-      skipped: selected === "skip",
+      skipped: false,
     });
-    if (selected === "comment") {
-      setSelected("");
-      setOpen(false);
-    }
+    setSelected("");
+    setOpen(false);
   };
 
+  const handleClose = (e) => {
+    e?.stopPropagation();
+    // Revert unsubmitted selection and text back to saved value
+    const savedAction = value?.action || "";
+    const savedComment = value?.comment || "";
+    if (savedAction === "comment" && !savedComment.trim()) {
+      setSelected("");
+      setCommentText("");
+    } else {
+      setSelected(savedAction);
+      setCommentText(savedComment);
+    }
+    setOpen(false);
+  };
+
+  // A comment counts as submitted ONLY if actual non-empty comment text exists in saved value
+  const hasSubmittedComment =
+    (selected === "comment" || selected === "comment_submitted") &&
+    Boolean((value?.comment || "").trim());
+
   // Already submitted feedback — show compact badge
-  const hasResult = Boolean(selected && (selected !== "comment" || !open));
+  const hasResult = Boolean(
+    !open &&
+    selected &&
+    (selected !== "comment" || hasSubmittedComment)
+  );
+
   const resultLabel =
     selected === "helpful" ? "Helpful" :
     selected === "notRelevant" ? "Not Relevant" :
     selected === "skip" ? "Skipped" :
-    (selected === "comment" || selected === "comment_submitted") ? "Comment Sent" : selected;
+    hasSubmittedComment ? "Comment Sent" : selected;
 
   return (
     <div className="feedback-strip">
@@ -161,7 +194,7 @@ const FeedbackStrip = ({ value = {}, onChange }) => {
             <button
               type="button"
               className="feedback-expanded__close"
-              onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+              onClick={handleClose}
             ><SvgClose size={14} /></button>
           </div>
           <div className="feedback-strip__actions">
@@ -201,6 +234,8 @@ const FeedbackStrip = ({ value = {}, onChange }) => {
                 <button
                   type="button"
                   className="feedback-submit-btn"
+                  disabled={!commentText.trim()}
+                  style={!commentText.trim() ? { opacity: 0.5, cursor: "not-allowed" } : {}}
                   onClick={handleSubmitComment}
                 >
                   Submit
@@ -303,12 +338,30 @@ const CreditUnlockOverlay = ({ type, balance, unlocking, onUnlock, onSeePlans, i
               <span className="cuo-confirm-balance">Balance after: {balance - cost} credits</span>
             </p>
             <div className="cuo-confirm-btns">
-              <button className="cuo-btn cuo-btn--confirm"
-                onClick={() => { onUnlock(); setShowConfirm(false); }} disabled={unlocking}>
-                {unlocking ? "Unlocking…" : "Yes, Unlock"}
+              <button
+                type="button"
+                className={`cuo-btn cuo-btn--confirm ${unlocking ? "loading" : ""}`}
+                onClick={onUnlock}
+                disabled={unlocking}
+              >
+                {unlocking ? (
+                  <>
+                    <svg className="cuo-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                    </svg>
+                    <span>Unlocking...</span>
+                  </>
+                ) : (
+                  <span>Yes, Unlock</span>
+                )}
               </button>
-              <button className="cuo-btn cuo-btn--cancel"
-                onClick={() => setShowConfirm(false)} disabled={unlocking}>
+              <button
+                type="button"
+                className="cuo-btn cuo-btn--cancel"
+                onClick={() => !unlocking && setShowConfirm(false)}
+                disabled={unlocking}
+              >
                 Cancel
               </button>
             </div>
@@ -320,7 +373,7 @@ const CreditUnlockOverlay = ({ type, balance, unlocking, onUnlock, onSeePlans, i
 };
 
 /* ─── Subscription Gate ─────────────────────────────────────────── */
-const SubscriptionGate = ({ onBack, onSubscribe, subscribing, initialTier = null }) => {
+const SubscriptionGate = ({ onBack, onSubscribe, subscribing, subscribingTier = null, initialTier = null }) => {
   const [selectedTier, setSelectedTier] = useState(initialTier || "standard");
   const [selectedBilling, setSelectedBilling] = useState("monthly");
 
@@ -393,7 +446,17 @@ const SubscriptionGate = ({ onBack, onSubscribe, subscribing, initialTier = null
                   }}
                   disabled={subscribing}
                 >
-                  {subscribing && selectedTier === p ? "Activating…" : "Subscribe Now"}
+                  {subscribing && (subscribingTier ? subscribingTier === p : selectedTier === p) ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                      <svg className="cuo-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                      </svg>
+                      <span>Activating…</span>
+                    </span>
+                  ) : (
+                    "Subscribe Now"
+                  )}
                 </button>
                 <hr className="spc-divider" />
                 <ul className="spc-feats">
@@ -476,6 +539,7 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
   const [subPlanTier, setSubPlanTier] = useState(() => localStorage.getItem(SUB_PLANTIER_KEY) || null);
   const [showSubGate, setShowSubGate] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
+  const [subscribingTier, setSubscribingTier] = useState(null);
   const [subError, setSubError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [subscribedPlan, setSubscribedPlan] = useState("");
@@ -626,12 +690,14 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
                     seenViews.add(m.viewType);
                     // Sync if local is empty or backend has newer comment
                     if (!next[m.viewType] || !next[m.viewType].action || (m.comment && !next[m.viewType].comment)) {
-                      next[m.viewType] = {
-                        action: m.action,
-                        comment: m.comment || "",
-                        skipped: m.action === "skip",
-                      };
-                      changed = true;
+                      if (m.action !== "comment" || (m.comment && m.comment.trim())) {
+                        next[m.viewType] = {
+                          action: m.action,
+                          comment: m.comment || "",
+                          skipped: m.action === "skip",
+                        };
+                        changed = true;
+                      }
                     }
                   }
                 });
@@ -656,7 +722,7 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
     // 1. Immediately update in-memory state and save to user-specific localStorage
     setStepFeedback((prev) => {
       const next = { ...prev };
-      if (!nextValue || (!nextValue.action && !nextValue.comment)) {
+      if (!nextValue || (!nextValue.action && !nextValue.comment) || (nextValue.action === "comment" && !nextValue.comment?.trim())) {
         delete next[key];
       } else {
         next[key] = nextValue;
@@ -667,7 +733,7 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
 
     // 2. Persist to backend
     try {
-      const actionToSend = !nextValue || (!nextValue.action && !nextValue.comment)
+      const actionToSend = !nextValue || (!nextValue.action && !nextValue.comment) || (nextValue.action === "comment" && !nextValue.comment?.trim())
         ? "delete"
         : (nextValue.action || "comment");
       await axios.post(`${BASE_URL}/api/feedback`, {
@@ -712,11 +778,13 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
       setSubscribedPlanTier(basePlanTier);
       setSubscribedTier(actualTier);
       setSubscribing(false);
+      setSubscribingTier(null);
       setSubError("");
       setShowSuccess(true);
     },
     onError: (msg) => {
       setSubscribing(false);
+      setSubscribingTier(null);
       if (msg) setSubError(msg);
     },
   });
@@ -793,13 +861,27 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
   }, [userEmail, unlocking]);
 
   /* ── Subscription handlers ───────────────────────────────────── */
-  const handleSeePlans = (tier = null) => { setSubError(""); setSubGateInitialTier(tier); setShowSubGate(true); };
+  const handleSeePlans = (tier = null) => {
+    setSubError("");
+    setSubGateInitialTier(tier);
+    setSubscribing(false);
+    setSubscribingTier(null);
+    setShowSubGate(true);
+  };
   const handleSubscribe = async ({ tier, billing }) => {
     if (!userEmail || userEmail === "guest") { setSubError("Please log in to subscribe."); return; }
-    setSubscribing(true); setSubError("");
+    setSubscribing(true);
+    setSubscribingTier(tier);
+    setSubError("");
     await initiatePayment({ tier, billing });
   };
-  const handleBackFromGate = () => { setShowSubGate(false); setSubError(""); setSubGateInitialTier(null); };
+  const handleBackFromGate = () => {
+    setShowSubGate(false);
+    setSubError("");
+    setSubGateInitialTier(null);
+    setSubscribing(false);
+    setSubscribingTier(null);
+  };
 
   /* ── Step data fetch ─────────────────────────────────────────── */
   useEffect(() => {
@@ -1004,7 +1086,7 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
         <div className="sub-gate">
           <div className="sub-gate__inner">
             <button className="sub-gate__back"
-              onClick={() => { setShowNanoGate(false); setSubError(""); }}
+              onClick={() => { setShowNanoGate(false); setSubError(""); setSubscribing(false); setSubscribingTier(null); }}
               disabled={subscribing}>
               ← Back to Current Step
             </button>
@@ -1035,11 +1117,22 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
                       disabled={subscribing}
                       onClick={() => {
                         setSubscribing(true);
+                        setSubscribingTier(p);
                         setSubError("");
                         initiatePayment({ tier: `${p}_nano`, billing: "monthly" });
                       }}
                     >
-                      {subscribing ? "Activating…" : "Upgrade to Nano"}
+                      {subscribing && subscribingTier === p ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                          <svg className="cuo-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                          </svg>
+                          <span>Activating…</span>
+                        </span>
+                      ) : (
+                        "Upgrade to Nano"
+                      )}
                     </button>
                     <hr className="spc-divider" />
                     <ul className="spc-feats">
@@ -1087,6 +1180,7 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
           onBack={handleBackFromGate}
           onSubscribe={handleSubscribe}
           subscribing={subscribing}
+          subscribingTier={subscribingTier}
           initialTier={subGateInitialTier}
         />
       </div>
@@ -1264,7 +1358,7 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
                   balance={walletBalance}
                   unlocking={unlocking.nano}
                   onUnlock={() => handleCreditUnlock("nano")}
-                  onSeePlans={() => { setSubError(""); setShowNanoGate(true); }}
+                  onSeePlans={() => { setSubError(""); setSubscribing(false); setSubscribingTier(null); setShowNanoGate(true); }}
                   isSubscriber={isSubscriber}
                 />
               )}
@@ -1313,7 +1407,7 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
                     });
                   }}>Book a Session →</button>
                 ) : (
-                  <button className="vc-btn bLocked" onClick={() => { setSubError(""); setShowNanoGate(true); }}>
+                  <button className="vc-btn bLocked" onClick={() => { setSubError(""); setSubscribing(false); setSubscribingTier(null); setShowNanoGate(true); }}>
                     Unlock Required
                   </button>
                 )}

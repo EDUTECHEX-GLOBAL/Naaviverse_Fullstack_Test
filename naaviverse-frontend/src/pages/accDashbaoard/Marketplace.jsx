@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./Marketplace.scss";
 import Skeleton from "react-loading-skeleton";
 import closepop from "../../static/images/dashboard/closepop.svg";
 import axios from "axios";
+import { SvgClose } from "../../utils/SvgIcons";
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -58,7 +59,11 @@ const LAYER_COLORS = {
 };
 
 const getRoleConf   = (role) => CATEGORY_CONFIG[role?.toLowerCase()] || { color: "#94a3b8", colorLight: "#f1f5f9", Icon: () => null, label: "Unknown" };
-const formatPrice   = (cost) => (!cost ? "Free" : cost.toString());
+const formatPrice = (cost) => {
+  if (!cost || cost === "0" || cost === 0 || cost === "Free" || cost === "free") return "Free";
+  const str = String(cost).trim().replace(/^\$+/, "").trim();
+  return str.startsWith("₹") ? str : `₹${str}`;
+};
 const formatAccess  = (access) => {
   if (!access) return "Free";
   return access.toLowerCase().includes("free") ? "Free" : "Paid";
@@ -77,6 +82,15 @@ const Marketplace = ({ search = "", selectedRole = "all", onRoleChange, onSearch
   const [loading,        setLoading]        = useState(true);
   const [activeCategory, setActiveCategory] = useState("institution");
   const [localSearch,    setLocalSearch]    = useState(search || "");
+  const searchInputRef = useRef(null);
+
+  const handleClearSearch = () => {
+    setLocalSearch("");
+    if (onSearchChange) onSearchChange("");
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  };
   const [selectedItem,   setSelectedItem]   = useState(null);
   const [tableKey,       setTableKey]       = useState(0);
 
@@ -229,11 +243,29 @@ const Marketplace = ({ search = "", selectedRole = "all", onRoleChange, onSearch
             <span className="mp-panel__title">{ac.label}</span>
           </div>
           <div className="mp-search">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" style={{ flexShrink: 0 }}>
               <circle cx="11" cy="11" r="8" /><path d="M21 21L16.65 16.65" strokeLinecap="round" />
             </svg>
-            <input type="text" placeholder="Search..." value={localSearch}
-              onChange={handleSearchChange} className="mp-search__input" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search..."
+              value={localSearch}
+              onChange={handleSearchChange}
+              className="mp-search__input"
+              aria-label="Search marketplace items"
+            />
+            {localSearch && (
+              <button
+                type="button"
+                className="mp-search__clear"
+                onClick={handleClearSearch}
+                aria-label="Clear search"
+                title="Clear search"
+              >
+                <SvgClose size={11} color="currentColor" strokeWidth={2.5} />
+              </button>
+            )}
           </div>
         </div>
 

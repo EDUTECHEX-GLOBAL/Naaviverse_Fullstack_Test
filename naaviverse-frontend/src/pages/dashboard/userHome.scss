@@ -1400,13 +1400,17 @@
   font-size: 15px;
   font-weight: 500;
   color: var(--uh-ink);
+  line-height: 1.35 !important;
   margin: 0 0 3px;
 }
 
 .uh-path-goal {
   font-size: 11.5px;
   color: var(--uh-ink-4);
-  margin: 0;
+  line-height: 1.42 !important;
+  margin: 3px 0 5px !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
 }
 
 .uh-path-stats {
@@ -1531,13 +1535,17 @@
   font-size: 12.5px;
   font-weight: 600;
   color: var(--uh-ink-2);
+  line-height: 1.3 !important;
 }
 
 .uh-step-desc {
   display: block;
   font-size: 10.5px;
   color: var(--uh-ink-4);
-  margin-top: 1px;
+  line-height: 1.38 !important;
+  margin-top: 2px !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
 }
 
 .uh-step-dur {
@@ -1649,24 +1657,32 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .uh-explore-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--uh-ink-2);
+  line-height: 1.3 !important;
+  margin: 0 0 2px !important;
 }
 
 .uh-explore-desc {
   font-size: 10.5px;
   color: var(--uh-ink-4);
+  line-height: 1.4 !important;
+  margin: 2px 0 3px !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
 }
 
 .uh-explore-steps {
   font-size: 10px;
   color: var(--uh-blue-mid);
   font-weight: 600;
-  margin-top: 2px;
+  line-height: 1.3 !important;
+  margin-top: 1px !important;
 }
 
 .uh-explore-right {
@@ -2310,13 +2326,15 @@
 
 .uh-path-title-section {
   flex: 1;
+  min-width: 0;
 }
 
 .uh-path-student-mini {
   font-size: 10.5px;
   color: var(--uh-ink-3);
-  margin-top: 6px;
+  margin-top: 4px !important;
   font-weight: 500;
+  line-height: 1.35 !important;
 
   span:first-child {
     font-weight: 600;
@@ -2324,6 +2342,7 @@
     text-transform: uppercase;
     font-size: 9px;
     letter-spacing: 0.3px;
+    line-height: 1.35 !important;
   }
 }
 

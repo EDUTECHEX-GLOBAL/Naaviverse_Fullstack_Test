@@ -3053,13 +3053,13 @@ body {
 }
 
 .responsive-select-desktop {
-  display: block;
+  display: none !important;
   width: 100%;
   box-sizing: border-box;
 }
 
 .responsive-select-mobile {
-  display: none;
+  display: block !important;
   width: 100%;
   position: relative;
   box-sizing: border-box;
@@ -3138,13 +3138,13 @@ body {
   right: 0;
   width: 100%;
   max-width: 100%;
-  max-height: 180px;
+  max-height: 200px;
   overflow-y: auto;
   background: #ffffff;
-  border: 1px solid #dbe5ee;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(10, 28, 42, 0.14);
-  z-index: 1000;
+  border: 1.5px solid #2a9d8f;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 33, 55, 0.16);
+  z-index: 10000;
   padding: 4px;
   box-sizing: border-box;
 
@@ -3152,24 +3152,23 @@ body {
     width: 5px;
   }
   &::-webkit-scrollbar-track {
-    background: #f8fafc;
-    border-radius: 6px;
+    background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 6px;
+    background: rgba(42, 157, 143, 0.35);
+    border-radius: 4px;
     &:hover {
-      background: #94a3b8;
+      background: rgba(42, 157, 143, 0.55);
     }
   }
 }
 
 .responsive-select-option {
-  padding: 9px 12px;
-  font-size: 0.84rem;
+  padding: 7px 11px;
+  font-size: 12px;
   font-family: 'Poppins', sans-serif !important;
-  color: #1e3a4a;
-  border-radius: 8px;
+  color: #0f2137;
+  border-radius: 6px;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
   white-space: nowrap;
@@ -3177,13 +3176,13 @@ body {
   text-overflow: ellipsis;
 
   &:hover {
-    background: #f0f7fb;
-    color: #0d6b6e;
+    background: rgba(42, 157, 143, 0.08);
+    color: #2a9d8f;
   }
 
   &.selected {
-    background: #e6f3f4;
-    color: #0d6b6e;
+    background: rgba(42, 157, 143, 0.15);
+    color: #2a9d8f;
     font-weight: 600;
   }
 }
@@ -3410,10 +3409,105 @@ body {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
+   TABLET / IPAD VIEW (<= 1024px) - Non-wrapping badge and wrapping title
+   Desktop (> 1024px) is left completely untouched.
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .path-title-section {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px 12px !important;
+
+    .draft-badge {
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: 999px !important;
+      width: fit-content !important;
+      max-width: fit-content !important;
+      box-sizing: border-box !important;
+    }
+  }
+
+  .draft-badge {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    width: fit-content !important;
+    max-width: fit-content !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
    MOBILE VIEW ONLY (<= 768px) - Steps Section & Step Cards
-   Desktop (> 768px) is left completely untouched.
    ═════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+  .path-header-box {
+    padding: 1rem 0.85rem !important;
+    border-radius: 14px !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .path-header-content {
+    gap: 0.75rem !important;
+  }
+
+  .path-title-section {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px 8px !important;
+
+    .path-title {
+      font-size: 1.15rem !important;
+      line-height: 1.3 !important;
+      margin: 0 !important;
+    }
+
+    .draft-badge {
+      font-size: 0.62rem !important;
+      font-weight: 700 !important;
+      padding: 2.5px 8px !important;
+      border-radius: 999px !important;
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      line-height: 1.2 !important;
+      letter-spacing: 0.3px !important;
+      width: fit-content !important;
+      max-width: fit-content !important;
+      height: auto !important;
+      box-sizing: border-box !important;
+    }
+  }
+
+  .draft-badge {
+    font-size: 0.62rem !important;
+    font-weight: 700 !important;
+    padding: 2.5px 8px !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.3px !important;
+    width: fit-content !important;
+    max-width: fit-content !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+  }
+
   .steps-section {
     padding: 1rem 0.85rem !important;
     border-radius: 16px !important;
@@ -3564,4 +3658,4 @@ body {
   }
 }
 
-
+

@@ -1,3 +1,4 @@
+import CustomSelect from '../accDashbaoard/CustomSelect';
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -195,7 +196,20 @@ const EditServiceForm = ({ service, onSave, onCancel }) => {
             
             <div className="form-group">
               <label>Status</label>
-              <select
+              <div className="project-desktop-custom-select">
+                <CustomSelect
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  options={[
+                    { label: "Active", value: "active" },
+                    { label: "Inactive", value: "inactive" },
+                  ]}
+                  searchable={false}
+                />
+              </div>
+              <div className="project-mobile-native-select">
+                <select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
@@ -204,6 +218,7 @@ const EditServiceForm = ({ service, onSave, onCancel }) => {
                 <option value="active">🟢 Active</option>
                 <option value="inactive">[red-dot] Inactive</option>
               </select>
+              </div>
             </div>
           </div>
         </div>

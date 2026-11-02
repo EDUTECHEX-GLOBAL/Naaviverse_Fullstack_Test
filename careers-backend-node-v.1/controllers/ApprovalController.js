@@ -158,10 +158,11 @@ exports.updateApproval = async (req, res) => {
 
       sendNotificationMail(approval.email, appSubject, appHtml);
 
+      const emailQuery = { email: { $regex: new RegExp("^" + (approval.email || "").trim() + "$", "i") } };
       if (isUser) {
-        await User.findOneAndUpdate({ email: approval.email }, { status: "active", isBlocked: false });
+        await User.findOneAndUpdate(emailQuery, { status: "active", isBlocked: false, OTPverified: true });
       } else {
-        await Partner.findOneAndUpdate({ email: approval.email }, { status: true, isBlocked: false });
+        await Partner.findOneAndUpdate(emailQuery, { status: true, isBlocked: false, accountStatus: "active", OTPverified: true });
       }
     } else if (status === "rejected") {
       sendNotificationMail(
@@ -170,10 +171,11 @@ exports.updateApproval = async (req, res) => {
         `${greeting},<br>Unfortunately your application was not approved.<br>${reason ? `Reason: ${reason}` : "Please contact support for more information."}`
       );
     } else if (status === "deactivated") {
+      const emailQuery = { email: { $regex: new RegExp("^" + (approval.email || "").trim() + "$", "i") } };
       if (isUser) {
-        await User.findOneAndUpdate({ email: approval.email }, { status: "inactive", isBlocked: true });
+        await User.findOneAndUpdate(emailQuery, { status: "inactive", isBlocked: true });
       } else {
-        await Partner.findOneAndUpdate({ email: approval.email }, { status: false, isBlocked: true });
+        await Partner.findOneAndUpdate(emailQuery, { status: false, isBlocked: true, accountStatus: "inactive" });
       }
     }
 
@@ -200,15 +202,16 @@ exports.deactivateApproval = async (req, res) => {
     }
 
     const isUser = approval.role?.toLowerCase() === "user";
+    const emailQuery = { email: { $regex: new RegExp("^" + (approval.email || "").trim() + "$", "i") } };
     if (isUser) {
       await User.findOneAndUpdate(
-        { email: approval.email },
+        emailQuery,
         { status: "inactive", isBlocked: true }
       );
     } else {
       await Partner.findOneAndUpdate(
-        { email: approval.email },
-        { status: false, isBlocked: true }
+        emailQuery,
+        { status: false, isBlocked: true, accountStatus: "inactive" }
       );
     }
 
@@ -216,6 +219,42 @@ exports.deactivateApproval = async (req, res) => {
   } catch (err) {
     console.error("deactivateApproval error:", err);
     res.status(500).json({ status: false, message: "Error deactivating record" });
+  }
+};
+
+// [OK] ACTIVATE / REACTIVATE approval & mark user/partner active in DB
+exports.activateApproval = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const approval = await Approval.findByIdAndUpdate(
+      id,
+      { status: "approved" },
+      { new: true }
+    );
+
+    if (!approval) {
+      return res.status(404).json({ status: false, message: "Approval record not found" });
+    }
+
+    const isUser = approval.role?.toLowerCase() === "user";
+    const emailQuery = { email: { $regex: new RegExp("^" + (approval.email || "").trim() + "$", "i") } };
+    if (isUser) {
+      await User.findOneAndUpdate(
+        emailQuery,
+        { status: "active", isBlocked: false, OTPverified: true }
+      );
+    } else {
+      await Partner.findOneAndUpdate(
+        emailQuery,
+        { status: true, isBlocked: false, accountStatus: "active", OTPverified: true }
+      );
+    }
+
+    res.json({ status: true, data: approval, message: "Record activated in DB successfully" });
+  } catch (err) {
+    console.error("activateApproval error:", err);
+    res.status(500).json({ status: false, message: "Error activating record" });
   }
 };
 

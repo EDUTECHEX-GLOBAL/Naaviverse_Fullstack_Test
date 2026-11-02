@@ -1,3 +1,4 @@
+import CustomSelect from '../../pages/accDashbaoard/CustomSelect';
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import "./MarketplaceAssistance.scss";
@@ -392,19 +393,37 @@ export default function AdminMarketplaceRecommendationModal({
                 {/* Category / Type */}
                 <div className="amr-field">
                   <label className="amr-label">Category / Type</label>
-                  <select
-                    className="amr-select"
-                    value={customCategory}
-                    onChange={(e) => setCustomCategory(e.target.value)}
-                  >
-                    <option value="Mentorship Program">Mentorship Program</option>
-                    <option value="Summer Program">Summer Program</option>
-                    <option value="Course / Bootcamp">Course / Bootcamp</option>
-                    <option value="Research Project">Research Project</option>
-                    <option value="Internship / Training">Internship / Training</option>
-                    <option value="Admissions Counseling">Admissions Counseling</option>
-                    <option value="Other">Other Custom Service</option>
-                  </select>
+                  <div className="project-desktop-custom-select">
+                    <CustomSelect
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      options={[
+                        "Mentorship Program",
+                        "Summer Program",
+                        "Course / Bootcamp",
+                        "Research Project",
+                        "Internship / Training",
+                        "Admissions Counseling",
+                        { label: "Other Custom Service", value: "Other" }
+                      ]}
+                      searchable={false}
+                    />
+                  </div>
+                  <div className="project-mobile-native-select">
+                    <select
+                      className="amr-select"
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                    >
+                      <option value="Mentorship Program">Mentorship Program</option>
+                      <option value="Summer Program">Summer Program</option>
+                      <option value="Course / Bootcamp">Course / Bootcamp</option>
+                      <option value="Research Project">Research Project</option>
+                      <option value="Internship / Training">Internship / Training</option>
+                      <option value="Admissions Counseling">Admissions Counseling</option>
+                      <option value="Other">Other Custom Service</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Provider / Institute */}
@@ -435,15 +454,25 @@ export default function AdminMarketplaceRecommendationModal({
                 <div className="amr-field">
                   <label className="amr-label">Delivery Mode & Duration</label>
                   <div className="amr-field-split">
-                    <select
-                      className="amr-select"
-                      value={customMode}
-                      onChange={(e) => setCustomMode(e.target.value)}
-                    >
-                      <option value="Online">Online</option>
-                      <option value="Offline">Offline</option>
-                      <option value="Hybrid">Hybrid</option>
-                    </select>
+                    <div className="project-desktop-custom-select" style={{ minWidth: "120px" }}>
+                      <CustomSelect
+                        value={customMode}
+                        onChange={(e) => setCustomMode(e.target.value)}
+                        options={["Online", "Offline", "Hybrid"]}
+                        searchable={false}
+                      />
+                    </div>
+                    <div className="project-mobile-native-select">
+                      <select
+                        className="amr-select"
+                        value={customMode}
+                        onChange={(e) => setCustomMode(e.target.value)}
+                      >
+                        <option value="Online">Online</option>
+                        <option value="Offline">Offline</option>
+                        <option value="Hybrid">Hybrid</option>
+                      </select>
+                    </div>
                     <input
                       type="text"
                       className="amr-input"

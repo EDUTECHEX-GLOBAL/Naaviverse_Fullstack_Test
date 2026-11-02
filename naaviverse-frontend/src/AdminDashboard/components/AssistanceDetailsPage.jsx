@@ -1,3 +1,4 @@
+import CustomSelect from '../../pages/accDashbaoard/CustomSelect';
 import React, { useState, useEffect, useRef } from "react";
 import "./MarketplaceAssistance.scss";
 import marketplaceReplacementService from "../../services/marketplaceReplacementService";
@@ -137,16 +138,31 @@ export default function AssistanceDetailsPage({
         <div className="adp-header-actions">
           <div className="adp-status-updater">
             <span className="adp-status-label">Ticket Status:</span>
-            <select
-              className={`adp-status-select status-${request.status}`}
-              value={request.status}
-              onChange={(e) => onStatusChange && onStatusChange({ ...request, status: e.target.value })}
-            >
-              <option value="pending">Pending Review</option>
-              <option value="reviewing">In Review / Active Chat</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
-            </select>
+            <div className="project-desktop-custom-select inline" style={{ minWidth: "160px" }}>
+              <CustomSelect
+                value={request.status}
+                onChange={(e) => onStatusChange && onStatusChange({ ...request, status: e.target.value })}
+                options={[
+                  { label: "Pending Review", value: "pending" },
+                  { label: "In Review / Active Chat", value: "reviewing" },
+                  { label: "Resolved", value: "resolved" },
+                  { label: "Closed", value: "closed" },
+                ]}
+                searchable={false}
+              />
+            </div>
+            <div className="project-mobile-native-select inline">
+              <select
+                className={`adp-status-select status-${request.status}`}
+                value={request.status}
+                onChange={(e) => onStatusChange && onStatusChange({ ...request, status: e.target.value })}
+              >
+                <option value="pending">Pending Review</option>
+                <option value="reviewing">In Review / Active Chat</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
           </div>
 
           <button

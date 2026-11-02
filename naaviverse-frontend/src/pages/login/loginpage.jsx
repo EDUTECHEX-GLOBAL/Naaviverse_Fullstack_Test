@@ -549,14 +549,15 @@ const Loginpage = ({ initialType }) => {
         }
     };
 
-    const handleLogin = async () => {
+    const handleLogin = async (overrideRole) => {
         setIsLoading(true);
         setLoginError(null);
         setiserror(false);
+        const currentRole = overrideRole || loginType;
         const obj = { email, password };
 
         try {
-            const response = await Loginservice(obj, loginType);
+            const response = await Loginservice(obj, currentRole);
             const result = response.data;
 
             console.log("[fire] FULL LOGIN RESPONSE:", result);
@@ -579,7 +580,7 @@ const Loginpage = ({ initialType }) => {
                 localStorage.setItem("user", JSON.stringify(result.user));
             }
 
-            localStorage.setItem("userType", loginType === "Users" ? "user" : "partner");
+            localStorage.setItem("userType", currentRole === "Users" ? "user" : "partner");
 
             const emailToStore =
                 result?.user?.email ||
@@ -592,7 +593,7 @@ const Loginpage = ({ initialType }) => {
 
             console.log("[fire] STORED EMAIL:", emailToStore);
 
-            if (loginType === "Users") {
+            if (currentRole === "Users") {
                 if (result.user) {
                     let userObj = { ...result.user };
                     localStorage.setItem("user", JSON.stringify(userObj));
@@ -664,7 +665,7 @@ const Loginpage = ({ initialType }) => {
             } else {
                 const partnerData = result.partner || {};
 
-                const isInternal = partnerData.creationSource === "admin_created";
+                const isInternal = partnerData.creationSource === "admin_created" || String(partnerData.partnerType).toLowerCase() === "internal";
 
                 let approvalStatus = partnerData.approvalStatus || (isInternal ? "approved" : "");
 
@@ -748,7 +749,7 @@ const Loginpage = ({ initialType }) => {
                     (profileData?.firstName && String(profileData.firstName).trim() !== "")
                 );
 
-                if (isInternal || approvalStatus === "approved") {
+                if (isInternal || approvalStatus === "approved" || partnerData.accountStatus === "active") {
                     // Approved partner -> direct home access
                     navigate("/dashboard/accountants/home");
                 } else {
@@ -768,35 +769,49 @@ const Loginpage = ({ initialType }) => {
             const msg = errData?.message;
             const registeredRole = errData?.registeredRole;
 
-            if (code === "REGISTERED_AS_PARTNER" || (loginType === "Users" && registeredRole === "Partner")) {
+            if ((code === "REGISTERED_AS_PARTNER" || registeredRole === "Partner") && currentRole === "Users") {
+                setLoginType("Accountants");
+                if (password) {
+                    return handleLogin("Accountants");
+                }
                 setLoginError({
                     type: "toggle_warning",
                     targetRole: "Accountants",
                     targetRoleLabel: "Partner",
                     title: "Registered as Partner",
                     message: "This email is registered as a Partner account.",
-                    detail: "You are currently on the User login tab. Would you like to switch to Partner login?",
+                    detail: "Switched to Partner login. Please enter your password to continue.",
                     actionText: "Switch to Partner Login",
                     actionType: "switch_role",
                 });
-                toast.warning("This email is registered as a Partner account. Switch to Partner login to continue.", {
+                toast.info("Switched to Partner login. Please enter your password to continue.", {
                     position: "top-right",
-                    autoClose: 5000,
+                    autoClose: 4000,
                 });
-            } else if (code === "REGISTERED_AS_USER" || (loginType === "Accountants" && registeredRole === "User")) {
+            } else if ((code === "REGISTERED_AS_USER" || registeredRole === "User") && currentRole === "Accountants") {
+                setLoginType("Users");
+                if (password) {
+                    return handleLogin("Users");
+                }
                 setLoginError({
                     type: "toggle_warning",
                     targetRole: "Users",
                     targetRoleLabel: "User",
                     title: "Registered as User",
                     message: "This email is registered as a User account.",
-                    detail: "You are currently on the Partner login tab. Would you like to switch to User login?",
+                    detail: "Switched to User login. Please enter your password to continue.",
                     actionText: "Switch to User Login",
                     actionType: "switch_role",
                 });
-                toast.warning("This email is registered as a User account. Switch to User login to continue.", {
+                toast.info("Switched to User login. Please enter your password to continue.", {
                     position: "top-right",
-                    autoClose: 5000,
+                    autoClose: 4000,
+                });
+            } else if (error.response?.status === 403) {
+                setLoginError({
+                    type: "error",
+                    title: "Account Inactive",
+                    message: msg || "Your account is currently inactive. Please contact the administrator.",
                 });
             } else if (code === "USER_NOT_FOUND" || code === "PARTNER_NOT_FOUND" || error.response?.status === 404) {
                 setLoginError({

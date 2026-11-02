@@ -1,3 +1,4 @@
+import CustomSelect from './CustomSelect';
 import React, { useState, useEffect } from 'react';
 import './CreateNewService.scss';
 import axios from 'axios';
@@ -342,18 +343,29 @@ const CreateNewService = ({
   <h2 className="section-title">4. Select currency</h2>
   <div className="form-field">
     <label>What currency do you want to collect? <span className="required">*</span></label>
-    <select
-      value={serviceForm.currency}
-      onChange={(e) => setServiceForm({...serviceForm, currency: e.target.value})}
-      className="currency-select"
-    >
-      <option value="">Select a currency</option>
-      {currencies.map(curr => (
-        <option key={curr.code} value={curr.code}>
-          {curr.code} - {curr.name}
-        </option>
-      ))}
-    </select>
+    <div className="project-desktop-custom-select">
+      <CustomSelect
+        value={serviceForm.currency}
+        onChange={(e) => setServiceForm({...serviceForm, currency: e.target.value})}
+        options={currencies.map(curr => ({ label: `${curr.code} - ${curr.name}`, value: curr.code }))}
+        placeholder="Select a currency"
+        searchable={currencies.length >= 8}
+      />
+    </div>
+    <div className="project-mobile-native-select">
+      <select
+        value={serviceForm.currency}
+        onChange={(e) => setServiceForm({...serviceForm, currency: e.target.value})}
+        className="currency-select"
+      >
+        <option value="">Select a currency</option>
+        {currencies.map(curr => (
+          <option key={curr.code} value={curr.code}>
+            {curr.code} - {curr.name}
+          </option>
+        ))}
+      </select>
+    </div>
   </div>
 </div>
 

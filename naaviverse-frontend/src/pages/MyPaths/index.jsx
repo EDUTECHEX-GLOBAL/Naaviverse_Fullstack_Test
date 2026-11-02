@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useCoinContextData } from "../../context/CoinContext";
 import Skeleton from "react-loading-skeleton";
 import "./mypaths.scss";
@@ -13,7 +13,7 @@ import lg1 from "../../static/images/login/lg1.svg";
 import CurrentStep from "../CurrentStep";
 import { useStore } from "../../components/store/store.ts";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SvgCheckCircle } from "../../utils/SvgIcons";
+import { SvgCheckCircle, SvgClose } from "../../utils/SvgIcons";
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -77,6 +77,14 @@ const MyPaths = ({ search, admin, fetchAllServicesAgain, stpesMenu }) => {
   const [allServicesToRemove, setAllServicesToRemove] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
   const [localSearch, setLocalSearch] = useState(search || "");
+  const searchInputRef = useRef(null);
+
+  const handleClearSearch = () => {
+    setLocalSearch("");
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  };
 
   // [check] FIX: stepCounts stores real DB step counts per path _id
   const [stepCounts, setStepCounts] = useState({});
@@ -698,12 +706,25 @@ const MyPaths = ({ search, admin, fetchAllServicesAgain, stpesMenu }) => {
                   <path d="M21 21L16.65 16.65" strokeLinecap="round" />
                 </svg>
                 <input
+                  ref={searchInputRef}
                   type="text"
                   placeholder="Search paths..."
                   value={localSearch}
                   onChange={(e) => setLocalSearch(e.target.value)}
                   className="mp-search-input"
+                  aria-label="Search paths"
                 />
+                {localSearch && (
+                  <button
+                    type="button"
+                    className="mp-search-clear-btn"
+                    onClick={handleClearSearch}
+                    aria-label="Clear search"
+                    title="Clear search"
+                  >
+                    <SvgClose size={13} color="currentColor" strokeWidth={2.5} />
+                  </button>
+                )}
               </div>
             </div>
 

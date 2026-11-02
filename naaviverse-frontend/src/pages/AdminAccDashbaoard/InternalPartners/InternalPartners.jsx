@@ -38,6 +38,7 @@ const InternalPartners = () => {
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     id: "",
     partnerName: "",
@@ -56,6 +57,7 @@ const InternalPartners = () => {
   const [resetTargetPartner, setResetTargetPartner] = useState(null);
   const [newTempPassword, setNewTempPassword] = useState("");
   const [showPasswordText, setShowPasswordText] = useState(false);
+  const [isResetSubmitting, setIsResetSubmitting] = useState(false);
 
   // ── Existing country data and calling code options ────────────────────────
   const allCountries = useMemo(() => {
@@ -432,6 +434,8 @@ const InternalPartners = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!formData.partnerName || !formData.email || !formData.contactPerson) {
       toast.error("Please fill in all required fields (*)");
       return;
@@ -477,6 +481,7 @@ const InternalPartners = () => {
       phoneNumber: formattedPhone,
     };
 
+    setIsSubmitting(true);
     try {
       if (isEditing) {
         const res = await axios.put(`${BASE_URL}/api/partner/internal/update/${formData.id}`, payload);
@@ -491,6 +496,7 @@ const InternalPartners = () => {
             }));
           }
           fetchPartners();
+          setIsFormModalOpen(false);
         } else {
           toast.error(res.data?.message || "Failed to update partner");
         }
@@ -499,6 +505,7 @@ const InternalPartners = () => {
         if (res.data && res.data.success) {
           toast.success(`Internal Partner "${formData.partnerName}" created successfully!`);
           fetchPartners();
+          setIsFormModalOpen(false);
         } else {
           toast.error(res.data?.message || "Failed to create partner");
         }
@@ -506,9 +513,9 @@ const InternalPartners = () => {
     } catch (err) {
       console.error("API error submitting form:", err);
       toast.error(err.response?.data?.message || "Operation failed");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsFormModalOpen(false);
   };
 
   const handleToggleStatus = async (partner, e) => {
@@ -536,24 +543,31 @@ const InternalPartners = () => {
   };
 
   const handleConfirmPasswordReset = async () => {
+    if (isResetSubmitting) return;
     if (!newTempPassword) {
       toast.error("Password cannot be blank.");
       return;
     }
+    if (!resetTargetPartner) return;
     try {
+      setIsResetSubmitting(true);
       const res = await axios.post(`${BASE_URL}/api/partner/internal/reset-password`, {
         partnerId: resetTargetPartner.id || resetTargetPartner.email,
         newTempPassword,
       });
       if (res.data && res.data.success) {
-        toast.success(`Password reset for ${resetTargetPartner.partnerName}`);
+        toast.success(`Password reset for ${resetTargetPartner.partnerName || resetTargetPartner.email}`);
+        setIsResetModalOpen(false);
         fetchPartners();
+      } else {
+        toast.error(res.data?.message || "Failed to reset password");
       }
     } catch (err) {
       console.error("Reset password error:", err);
       toast.error(err.response?.data?.message || "Failed to reset password");
+    } finally {
+      setIsResetSubmitting(false);
     }
-    setIsResetModalOpen(false);
   };
 
   const handleCopyCredentials = () => {
@@ -864,14 +878,19 @@ const InternalPartners = () => {
 
       {/* ── CREATE / EDIT MODAL ── */}
       {isFormModalOpen && (
-        <div className="ip-modal-backdrop" onClick={() => setIsFormModalOpen(false)}>
+        <div className="ip-modal-backdrop" onClick={() => !isSubmitting && setIsFormModalOpen(false)}>
           <div className="ip-modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="m-header">
               <div>
                 <h3>{isEditing ? "Edit Internal Partner" : "Create Internal Partner"}</h3>
                 <p className="m-sub">Directly provision internal partner credentials & assignment</p>
               </div>
-              <button className="m-close" onClick={() => setIsFormModalOpen(false)} aria-label="Close modal">
+              <button
+                className="m-close"
+                disabled={isSubmitting}
+                onClick={() => !isSubmitting && setIsFormModalOpen(false)}
+                aria-label="Close modal"
+              >
                 <SvgClose size={18} />
               </button>
             </div>
@@ -1324,7 +1343,7 @@ const InternalPartners = () => {
                   </div>
                   <div className="m-field">
                     <label>City / State / Pincode</label>
-                    <div style={{ display: "flex", gap: "6px" }}>
+                    <div className="m-input-triplet">
                       <input
                         type="text"
                         placeholder="City"
@@ -1396,11 +1415,30 @@ const InternalPartners = () => {
               </div>
 
               <div className="m-actions">
-                <button type="button" className="ip-btn-secondary" onClick={() => setIsFormModalOpen(false)}>
+                <button
+                  type="button"
+                  className="ip-btn-secondary"
+                  disabled={isSubmitting}
+                  onClick={() => !isSubmitting && setIsFormModalOpen(false)}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="ip-btn-primary">
-                  {isEditing ? "Save Changes" : "Create Partner"}
+                <button
+                  type="submit"
+                  className={`ip-btn-primary ${isSubmitting ? "loading" : ""}`}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="ip-btn-spinner" width="15" height="15" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                      </svg>
+                      <span>{isEditing ? "Saving Changes..." : "Creating Partner..."}</span>
+                    </>
+                  ) : (
+                    <span>{isEditing ? "Save Changes" : "Create Partner"}</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -1410,14 +1448,22 @@ const InternalPartners = () => {
 
       {/* ── RESET PASSWORD MODAL ── */}
       {isResetModalOpen && resetTargetPartner && (
-        <div className="ip-modal-backdrop" onClick={() => setIsResetModalOpen(false)}>
+        <div
+          className="ip-modal-backdrop"
+          onClick={() => !isResetSubmitting && setIsResetModalOpen(false)}
+        >
           <div className="ip-modal-box reset" onClick={(e) => e.stopPropagation()}>
             <div className="m-header">
               <div>
                 <h3>Reset Password</h3>
                 <p className="m-sub">Issue new temporary access credentials</p>
               </div>
-              <button className="m-close" onClick={() => setIsResetModalOpen(false)} aria-label="Close modal">
+              <button
+                className="m-close"
+                disabled={isResetSubmitting}
+                onClick={() => !isResetSubmitting && setIsResetModalOpen(false)}
+                aria-label="Close modal"
+              >
                 <SvgClose size={18} />
               </button>
             </div>
@@ -1434,9 +1480,15 @@ const InternalPartners = () => {
                     <input
                       type={showPasswordText ? "text" : "password"}
                       value={newTempPassword}
+                      disabled={isResetSubmitting}
                       onChange={(e) => setNewTempPassword(e.target.value)}
                     />
-                    <button type="button" className="btn-opt highlight" onClick={() => setNewTempPassword(generateStrongPassword())}>
+                    <button
+                      type="button"
+                      className="btn-opt highlight"
+                      disabled={isResetSubmitting}
+                      onClick={() => setNewTempPassword(generateStrongPassword())}
+                    >
                       Generate
                     </button>
                   </div>
@@ -1445,15 +1497,45 @@ const InternalPartners = () => {
                 <div className="copy-snippet-box">
                   <div className="snippet-top">
                     <span>Credentials Snippet</span>
-                    <button type="button" className="btn-copy" onClick={handleCopyCredentials}>Copy</button>
+                    <button
+                      type="button"
+                      className="btn-copy"
+                      disabled={isResetSubmitting}
+                      onClick={handleCopyCredentials}
+                    >
+                      Copy
+                    </button>
                   </div>
                   <code>{`Email: ${resetTargetPartner.email}\nPass: ${newTempPassword}`}</code>
                 </div>
               </div>
 
               <div className="m-actions">
-                <button type="button" className="ip-btn-secondary" onClick={() => setIsResetModalOpen(false)}>Cancel</button>
-                <button type="submit" className="ip-btn-primary">Confirm Reset</button>
+                <button
+                  type="button"
+                  className="ip-btn-secondary"
+                  disabled={isResetSubmitting}
+                  onClick={() => !isResetSubmitting && setIsResetModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`ip-btn-primary ${isResetSubmitting ? "loading" : ""}`}
+                  disabled={isResetSubmitting}
+                >
+                  {isResetSubmitting ? (
+                    <>
+                      <svg className="ip-btn-spinner" width="15" height="15" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                      </svg>
+                      <span>Resetting...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Reset</span>
+                  )}
+                </button>
               </div>
             </form>
           </div>

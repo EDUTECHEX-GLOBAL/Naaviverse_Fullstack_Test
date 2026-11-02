@@ -364,6 +364,29 @@ const updateMarketplaceItem = async (req, res) => {
         message: "Marketplace item not found" 
       });
     }
+
+    // Validate access vs cost
+    const targetAccess = updateData.access !== undefined ? updateData.access : originalItem.access;
+    const targetCost   = updateData.cost !== undefined ? updateData.cost : originalItem.cost;
+
+    if (targetAccess !== undefined && targetCost !== undefined) {
+      const normAccess = String(targetAccess || "").trim().toLowerCase();
+      const rawCost = String(targetCost || "").replace(/[₹$,\s]/g, "").trim();
+      const isZeroOrFree = !rawCost || rawCost === "0" || rawCost.toLowerCase() === "free" || Number(rawCost) === 0;
+
+      if (normAccess === "free" && !isZeroOrFree) {
+        return res.status(400).json({
+          status: false,
+          message: "Cannot set a paid price for Free access. Please set price to 0 or change access to Paid."
+        });
+      }
+      if (normAccess === "paid" && isZeroOrFree) {
+        return res.status(400).json({
+          status: false,
+          message: "Price must be greater than 0 for Paid access."
+        });
+      }
+    }
     
     // Update the item
     const updatedItem = await marketplaceModel.findByIdAndUpdate(

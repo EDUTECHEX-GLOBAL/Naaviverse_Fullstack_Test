@@ -1,3 +1,4 @@
+import CustomSelect from '../../pages/accDashbaoard/CustomSelect';
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import {
@@ -723,36 +724,69 @@ export default function SuperAdminCustomPathBuilder({
                       <div className="sacp-duration-inputs">
                         <div>
                           <span className="duration-sub">Years</span>
-                          <select
-                            value={durationYears}
-                            onChange={(e) => setDurationYears(e.target.value)}
-                          >
-                            {[...Array(9)].map((_, i) => (
-                              <option key={i} value={i}>{i}</option>
-                            ))}
-                          </select>
+                          <div className="project-desktop-custom-select sacp-duration-custom">
+                            <CustomSelect
+                              value={durationYears}
+                              onChange={(e) => setDurationYears(e.target.value)}
+                              options={[...Array(9)].map((_, i) => ({ label: String(i), value: i }))}
+                              placeholder="Select"
+                              searchable={false}
+                            />
+                          </div>
+                          <div className="project-mobile-native-select">
+                            <select
+                              value={durationYears}
+                              onChange={(e) => setDurationYears(e.target.value)}
+                            >
+                              {[...Array(9)].map((_, i) => (
+                                <option key={i} value={i}>{i}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                         <div>
                           <span className="duration-sub">Months</span>
-                          <select
-                            value={durationMonths}
-                            onChange={(e) => setDurationMonths(e.target.value)}
-                          >
-                            {[...Array(12)].map((_, i) => (
-                              <option key={i} value={i}>{i}</option>
-                            ))}
-                          </select>
+                          <div className="project-desktop-custom-select sacp-duration-custom">
+                            <CustomSelect
+                              value={durationMonths}
+                              onChange={(e) => setDurationMonths(e.target.value)}
+                              options={[...Array(12)].map((_, i) => ({ label: String(i), value: i }))}
+                              placeholder="Select"
+                              searchable={false}
+                            />
+                          </div>
+                          <div className="project-mobile-native-select">
+                            <select
+                              value={durationMonths}
+                              onChange={(e) => setDurationMonths(e.target.value)}
+                            >
+                              {[...Array(12)].map((_, i) => (
+                                <option key={i} value={i}>{i}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                         <div>
                           <span className="duration-sub">Days</span>
-                          <select
-                            value={durationDays}
-                            onChange={(e) => setDurationDays(e.target.value)}
-                          >
-                            {[...Array(31)].map((_, i) => (
-                              <option key={i} value={i}>{i}</option>
-                            ))}
-                          </select>
+                          <div className="project-desktop-custom-select sacp-duration-custom">
+                            <CustomSelect
+                              value={durationDays}
+                              onChange={(e) => setDurationDays(e.target.value)}
+                              options={[...Array(31)].map((_, i) => ({ label: String(i), value: i }))}
+                              placeholder="Select"
+                              searchable={false}
+                            />
+                          </div>
+                          <div className="project-mobile-native-select">
+                            <select
+                              value={durationDays}
+                              onChange={(e) => setDurationDays(e.target.value)}
+                            >
+                              {[...Array(31)].map((_, i) => (
+                                <option key={i} value={i}>{i}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -981,26 +1015,52 @@ export default function SuperAdminCustomPathBuilder({
 
                             <div className="sacp-field">
                               <label>Access Type</label>
-                              <select
-                                value={currentStep[selectedViewKey]?.access || "free"}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setSteps((prev) => {
-                                    const c = [...prev];
-                                    c[selectedStepIdx] = {
-                                      ...c[selectedStepIdx],
-                                      [selectedViewKey]: {
-                                        ...c[selectedStepIdx][selectedViewKey],
-                                        access: val,
-                                      },
-                                    };
-                                    return c;
-                                  });
-                                }}
-                              >
-                                <option value="free">Free / Baseline</option>
-                                <option value="paid">Paid / Premium</option>
-                              </select>
+                              <div className="project-desktop-custom-select">
+                                <CustomSelect
+                                  value={currentStep[selectedViewKey]?.access || "free"}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSteps((prev) => {
+                                      const c = [...prev];
+                                      c[selectedStepIdx] = {
+                                        ...c[selectedStepIdx],
+                                        [selectedViewKey]: {
+                                          ...c[selectedStepIdx][selectedViewKey],
+                                          access: val,
+                                        },
+                                      };
+                                      return c;
+                                    });
+                                  }}
+                                  options={[
+                                    { label: "Free / Baseline", value: "free" },
+                                    { label: "Paid / Premium", value: "paid" },
+                                  ]}
+                                  searchable={false}
+                                />
+                              </div>
+                              <div className="project-mobile-native-select">
+                                <select
+                                  value={currentStep[selectedViewKey]?.access || "free"}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSteps((prev) => {
+                                      const c = [...prev];
+                                      c[selectedStepIdx] = {
+                                        ...c[selectedStepIdx],
+                                        [selectedViewKey]: {
+                                          ...c[selectedStepIdx][selectedViewKey],
+                                          access: val,
+                                        },
+                                      };
+                                      return c;
+                                    });
+                                  }}
+                                >
+                                  <option value="free">Free / Baseline</option>
+                                  <option value="paid">Paid / Premium</option>
+                                </select>
+                              </div>
                             </div>
 
                             <div className="sacp-field sacp-col-span-2">
@@ -1042,30 +1102,56 @@ export default function SuperAdminCustomPathBuilder({
                     <div className="market-selector-row">
                       <div className="market-sel-group">
                         <label>Active Step:</label>
-                        <select
-                          value={selectedStepIdx}
-                          onChange={(e) => setSelectedStepIdx(Number(e.target.value))}
-                        >
-                          {steps.map((s, idx) => (
-                            <option key={idx} value={idx}>
-                              {idx + 1}. {s.name || `Step ${idx + 1}`}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="project-desktop-custom-select sacp-market-custom">
+                          <CustomSelect
+                            value={selectedStepIdx}
+                            onChange={(e) => setSelectedStepIdx(Number(e.target.value))}
+                            options={steps.map((s, idx) => ({
+                              label: `${idx + 1}. ${s.name || `Step ${idx + 1}`}`,
+                              value: idx,
+                            }))}
+                            searchable={steps.length >= 8}
+                          />
+                        </div>
+                        <div className="project-mobile-native-select">
+                          <select
+                            value={selectedStepIdx}
+                            onChange={(e) => setSelectedStepIdx(Number(e.target.value))}
+                          >
+                            {steps.map((s, idx) => (
+                              <option key={idx} value={idx}>
+                                {idx + 1}. {s.name || `Step ${idx + 1}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
 
                       <div className="market-sel-group">
                         <label>Active Learning View:</label>
-                        <select
-                          value={selectedViewKey}
-                          onChange={(e) => setSelectedViewKey(e.target.value)}
-                        >
-                          {VIEWS.map((v) => (
-                            <option key={v.key} value={v.key}>
-                              {v.label} ({v.tag})
-                            </option>
-                          ))}
-                        </select>
+                        <div className="project-desktop-custom-select sacp-market-custom">
+                          <CustomSelect
+                            value={selectedViewKey}
+                            onChange={(e) => setSelectedViewKey(e.target.value)}
+                            options={VIEWS.map((v) => ({
+                              label: `${v.label} (${v.tag})`,
+                              value: v.key,
+                            }))}
+                            searchable={false}
+                          />
+                        </div>
+                        <div className="project-mobile-native-select">
+                          <select
+                            value={selectedViewKey}
+                            onChange={(e) => setSelectedViewKey(e.target.value)}
+                          >
+                            {VIEWS.map((v) => (
+                              <option key={v.key} value={v.key}>
+                                {v.label} ({v.tag})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
 
@@ -1122,14 +1208,28 @@ export default function SuperAdminCustomPathBuilder({
                         value={marketForm.discount}
                         onChange={(e) => setMarketForm({ ...marketForm, discount: e.target.value })}
                       />
-                      <select
-                        value={marketForm.access}
-                        onChange={(e) => setMarketForm({ ...marketForm, access: e.target.value })}
-                      >
-                        <option value="Free">Access: Free</option>
-                        <option value="Paid">Access: Paid</option>
-                        <option value="Scholarship">Access: Scholarship</option>
-                      </select>
+                      <div className="project-desktop-custom-select">
+                        <CustomSelect
+                          value={marketForm.access}
+                          onChange={(e) => setMarketForm({ ...marketForm, access: e.target.value })}
+                          options={[
+                            { label: "Access: Free", value: "Free" },
+                            { label: "Access: Paid", value: "Paid" },
+                            { label: "Access: Scholarship", value: "Scholarship" },
+                          ]}
+                          searchable={false}
+                        />
+                      </div>
+                      <div className="project-mobile-native-select">
+                        <select
+                          value={marketForm.access}
+                          onChange={(e) => setMarketForm({ ...marketForm, access: e.target.value })}
+                        >
+                          <option value="Free">Access: Free</option>
+                          <option value="Paid">Access: Paid</option>
+                          <option value="Scholarship">Access: Scholarship</option>
+                        </select>
+                      </div>
                       <input
                         type="text"
                         placeholder="Goal alignment (e.g. Master Neural Networks)"

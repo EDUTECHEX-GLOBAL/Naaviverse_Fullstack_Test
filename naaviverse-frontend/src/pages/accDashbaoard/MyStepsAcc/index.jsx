@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useCoinContextData } from "../../../context/CoinContext";
 import Skeleton from "react-loading-skeleton";
 import "./mypaths.scss";
@@ -13,7 +13,7 @@ import { useStore } from "../../../components/store/store.ts";
 import { useNavigate, useLocation } from "react-router-dom";
 import MenuNav from "../../../components/MenuNav/index.jsx";
 import stepIcon from '../../../assets/images/assets/naavi-icon3.webp';
-import { SvgClock, SvgPin, SvgLink } from "../../../utils/SvgIcons";
+import { SvgClock, SvgPin, SvgLink, SvgClose } from "../../../utils/SvgIcons";
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 // ─── Helper: parse duration object → human-readable string ───────────────────
@@ -120,6 +120,15 @@ const MyStepsAcc = ({
         mypathsMenu,
         setMypathsMenu,
     } = useCoinContextData();
+
+    const searchInputRef = useRef(null);
+
+    const handleClearSearch = () => {
+        if (setSearch) setSearch("");
+        if (searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    };
 
     // ── State ─────────────────────────────────────────────────────────────────
     const [partnerPathData, setPartnerPathData] = useState([]);
@@ -606,17 +615,30 @@ const MyStepsAcc = ({
 
                     {/* Search Bar */}
                     <div className="mp-search-wrapper">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" style={{ flexShrink: 0 }}>
                             <circle cx="11" cy="11" r="8" />
                             <path d="M21 21L16.65 16.65" strokeLinecap="round" />
                         </svg>
                         <input
+                            ref={searchInputRef}
                             type="text"
                             placeholder="Search steps..."
                             value={search || ""}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => setSearch && setSearch(e.target.value)}
                             className="mp-search-input"
+                            aria-label="Search steps"
                         />
+                        {search && (
+                            <button
+                                type="button"
+                                className="mp-search-clear-btn"
+                                onClick={handleClearSearch}
+                                aria-label="Clear search"
+                                title="Clear search"
+                            >
+                                <SvgClose size={13} color="currentColor" strokeWidth={2.5} />
+                            </button>
+                        )}
                     </div>
                 </div>
 

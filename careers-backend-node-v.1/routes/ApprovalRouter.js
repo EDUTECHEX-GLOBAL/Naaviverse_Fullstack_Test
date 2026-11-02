@@ -14,6 +14,9 @@ router.get("/status", ApprovalController.getApprovalByEmail);
 // UPDATE approval status by id
 router.put("/update/:id", ApprovalController.updateApproval);
 
+// ACTIVATE / REACTIVATE user/partner approval by id
+router.put("/activate/:id", ApprovalController.activateApproval);
+
 // DEACTIVATE user/partner approval by id
 router.put("/deactivate/:id", ApprovalController.deactivateApproval);
 

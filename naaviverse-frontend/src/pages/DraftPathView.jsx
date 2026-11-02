@@ -1471,23 +1471,26 @@ const DraftPathView = () => {
       )}
 
       {/* ══ ADMIN FEEDBACK MODAL ════════════════════════════════════════════ */}
-      {reviewPanelOpen && (
-        <>
-          <div
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1200 }}
-            onClick={() => { setReviewPanelOpen(false); setSelectedCR(null); }}
-          />
-          <div
-            style={{
-              position: "fixed",
-              top: "50%", left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "min(650px, 95vw)",
-              maxHeight: "88vh",
-              background: "#fff",
-              zIndex: 1201,
-              display: "flex",
-              flexDirection: "column",
+      {reviewPanelOpen &&
+        renderInBody(
+          <>
+            <div
+              className="admin-feedback-backdrop"
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 99998 }}
+              onClick={() => { setReviewPanelOpen(false); setSelectedCR(null); }}
+            />
+            <div
+              className="admin-feedback-dialog"
+              style={{
+                position: "fixed",
+                top: "50%", left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "min(650px, 92vw)",
+                maxHeight: "88vh",
+                background: "#fff",
+                zIndex: 99999,
+                display: "flex",
+                flexDirection: "column",
               boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
               borderRadius: 20,
               overflow: "hidden",

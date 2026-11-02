@@ -156,7 +156,39 @@ const login = async (req, res) => {
       });
     }
 
-    if (partner.isBlocked || partner.accountStatus === "inactive") {
+    // Auto-heal status consistency if out of sync
+    const isPartnerActive =
+      partner.accountStatus === "active" ||
+      (!partner.isBlocked && partner.status === true);
+
+    if (isPartnerActive) {
+      partner.accountStatus = "active";
+      partner.isBlocked = false;
+      partner.status = true;
+      partner.OTPverified = true;
+      await partner.save();
+
+      // Ensure Approval record is synced to approved as well
+      await Approval.findOneAndUpdate(
+        { email: { $regex: new RegExp("^" + cleanEmail + "$", "i") } },
+        {
+          $set: {
+            status: "approved",
+            role: "Partner",
+            email: partner.email,
+            businessName: partner.businessName || partner.username,
+            type: partner.partnerType || "Education & Learning",
+            firstName: partner.firstName || partner.username,
+          }
+        },
+        { upsert: true, new: true }
+      ).catch(() => {});
+    } else if (partner.accountStatus === "inactive" || partner.isBlocked) {
+      partner.accountStatus = "inactive";
+      partner.isBlocked = true;
+      partner.status = false;
+      await partner.save();
+
       return res.status(403).json({
         success: false,
         message: "Your account is currently inactive. Please contact administrator.",
@@ -981,6 +1013,26 @@ const updateInternalPartner = async (req, res) => {
     if (accountStatus) {
       partner.accountStatus = accountStatus;
       partner.isBlocked = (accountStatus === "inactive");
+      partner.status = (accountStatus === "active");
+      if (accountStatus === "active") {
+        partner.OTPverified = true;
+      }
+
+      const pEmail = (partner.email || "").trim();
+      await Approval.findOneAndUpdate(
+        { email: { $regex: new RegExp("^" + pEmail + "$", "i") } },
+        {
+          $set: {
+            status: accountStatus === "active" ? "approved" : "deactivated",
+            role: "Partner",
+            email: partner.email,
+            businessName: partner.businessName || partner.username,
+            type: partner.partnerType || "Education & Learning",
+            firstName: partner.firstName || partner.username,
+          }
+        },
+        { upsert: true, new: true }
+      ).catch(err => console.log("Approval sync notice:", err.message));
     }
     if (mustChangePassword !== undefined) partner.mustChangePassword = mustChangePassword;
 
@@ -1035,8 +1087,28 @@ const toggleInternalPartnerStatus = async (req, res) => {
     const newStatus = currentStatus === "active" ? "inactive" : "active";
     partner.accountStatus = newStatus;
     partner.isBlocked = (newStatus === "inactive");
+    partner.status = (newStatus === "active");
+    if (newStatus === "active") {
+      partner.OTPverified = true;
+    }
 
     await partner.save();
+
+    const pEmail = (partner.email || "").trim();
+    await Approval.findOneAndUpdate(
+      { email: { $regex: new RegExp("^" + pEmail + "$", "i") } },
+      {
+        $set: {
+          status: newStatus === "active" ? "approved" : "deactivated",
+          role: "Partner",
+          email: partner.email,
+          businessName: partner.businessName || partner.username,
+          type: partner.partnerType || "Education & Learning",
+          firstName: partner.firstName || partner.username,
+        }
+      },
+      { upsert: true, new: true }
+    ).catch(err => console.log("Approval sync notice:", err.message));
 
     return res.status(200).json({
       success: true,
@@ -1060,7 +1132,7 @@ const resetInternalPartnerPassword = async (req, res) => {
     const partner = await Partner.findOne({
       $or: [
         { _id: mongoose.Types.ObjectId.isValid(partnerId) ? partnerId : null },
-        { email: partnerId }
+        { email: typeof partnerId === "string" ? { $regex: new RegExp("^" + partnerId.trim() + "$", "i") } : partnerId }
       ]
     });
 
@@ -1070,7 +1142,17 @@ const resetInternalPartnerPassword = async (req, res) => {
 
     partner.password = newTempPassword; // pre-save hook will hash password!
     partner.mustChangePassword = true;
+    partner.accountStatus = "active";
+    partner.isBlocked = false;
+    partner.status = true;
+    partner.OTPverified = true;
     await partner.save();
+
+    const pEmail = (partner.email || "").trim();
+    await Approval.findOneAndUpdate(
+      { email: { $regex: new RegExp("^" + pEmail + "$", "i") } },
+      { $set: { status: "approved" } }
+    ).catch(err => console.log("Approval sync notice:", err.message));
 
     // Send Password Reset Email
     const resetMailBody = `
@@ -1115,8 +1197,8 @@ const resetInternalPartnerPassword = async (req, res) => {
 const changePartnerPassword = async (req, res) => {
   try {
     const { email, oldPassword, newPassword } = req.body;
-    if (!email || !oldPassword || !newPassword) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
+    if (!email || !newPassword) {
+      return res.status(400).json({ success: false, message: "Email and new password are required" });
     }
 
     const partner = await Partner.findOne({ email: email.toLowerCase() });
@@ -1124,13 +1206,21 @@ const changePartnerPassword = async (req, res) => {
       return res.status(404).json({ success: false, message: "Partner not found" });
     }
 
-    const isMatch = await partner.matchPassword(oldPassword);
-    if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Current password is incorrect" });
+    if (oldPassword) {
+      const isMatch = await partner.matchPassword(oldPassword);
+      if (!isMatch) {
+        return res.status(400).json({ success: false, message: "Current password is incorrect" });
+      }
+    } else if (!partner.mustChangePassword) {
+      return res.status(400).json({ success: false, message: "Current password is required" });
     }
 
     partner.password = newPassword; // pre-save hook will hash it!
     partner.mustChangePassword = false;
+    partner.accountStatus = "active";
+    partner.isBlocked = false;
+    partner.status = true;
+    partner.OTPverified = true;
     await partner.save();
 
     return res.status(200).json({ success: true, message: "Password updated successfully!" });

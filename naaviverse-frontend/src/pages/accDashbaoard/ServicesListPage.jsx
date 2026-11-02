@@ -123,10 +123,15 @@ const location = useLocation();
 
   const formatPrice = (service) => {
     if (!service.billing_cycle) return "Free";
+    const clean = (val) => {
+      if (!val && val !== 0) return "";
+      const s = String(val).trim().replace(/^\$+/, "").trim();
+      return s.startsWith("₹") ? s : `₹${s}`;
+    };
     if (service.billing_cycle.monthly?.price)
-      return `$${service.billing_cycle.monthly.price}/mo`;
+      return `${clean(service.billing_cycle.monthly.price)}/mo`;
     if (service.billing_cycle.lifetime?.price)
-      return `$${service.billing_cycle.lifetime.price}`;
+      return clean(service.billing_cycle.lifetime.price);
     return "Free";
   };
 

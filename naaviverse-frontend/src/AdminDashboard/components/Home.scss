@@ -355,8 +355,8 @@ $text-muted:    #9aa1b5;
 
     .dashboard-subtitle {
       font-size: 13px;
-      font-weight: 500;
-      color: #334155;
+      font-weight: 600;
+      color: #0f172a;
     }
   }
 
@@ -380,7 +380,7 @@ $text-muted:    #9aa1b5;
       .stat-name {
         font-size: 11.5px;
         font-weight: 700;
-        color: #334155;
+        color: #0f172a;
         letter-spacing: 0.35px;
       }
 
@@ -400,8 +400,8 @@ $text-muted:    #9aa1b5;
 
         .trend-text {
           font-size: 11px;
-          font-weight: 500;
-          color: #475569;
+          font-weight: 600;
+          color: #1e293b;
         }
       }
     }
@@ -427,8 +427,8 @@ $text-muted:    #9aa1b5;
 
       p {
         font-size: 12px;
-        font-weight: 500;
-        color: #475569;
+        font-weight: 600;
+        color: #1e293b;
       }
     }
   }
@@ -464,8 +464,8 @@ $text-muted:    #9aa1b5;
 
     p {
       font-size: 11.5px;
-      font-weight: 500;
-      color: #334155;
+      font-weight: 600;
+      color: #1e293b;
     }
   }
 }
@@ -474,6 +474,14 @@ $text-muted:    #9aa1b5;
 @media (min-width: 768px) and (max-width: 1199px) and (min-height: 1000px) {
   .home-dashboard {
     padding: 0 4px 6px;
+  }
+
+  .dashboard-header {
+    .dashboard-subtitle {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #0f172a;
+    }
   }
 
   .stats-row,
@@ -495,6 +503,8 @@ $text-muted:    #9aa1b5;
     .stat-info {
       .stat-name {
         font-size: 12px;
+        font-weight: 700;
+        color: #0f172a;
       }
 
       .stat-value {
@@ -508,6 +518,8 @@ $text-muted:    #9aa1b5;
 
         .trend-text {
           font-size: 11.5px;
+          font-weight: 600;
+          color: #1e293b;
         }
       }
     }
@@ -519,10 +531,14 @@ $text-muted:    #9aa1b5;
     .chart-header {
       h3 {
         font-size: 16px;
+        font-weight: 700;
+        color: #0f172a;
       }
 
       p {
         font-size: 12.5px;
+        font-weight: 600;
+        color: #1e293b;
       }
     }
   }
@@ -546,10 +562,14 @@ $text-muted:    #9aa1b5;
 
     h4 {
       font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
     }
 
     p {
       font-size: 12px;
+      font-weight: 600;
+      color: #1e293b;
     }
   }
 }
@@ -568,8 +588,8 @@ $text-muted:    #9aa1b5;
 
     .dashboard-subtitle {
       font-size: 12px;
-      font-weight: 500;
-      color: #334155;
+      font-weight: 600;
+      color: #0f172a;
     }
   }
 
@@ -593,7 +613,7 @@ $text-muted:    #9aa1b5;
       .stat-name {
         font-size: 11px;
         font-weight: 700;
-        color: #334155;
+        color: #0f172a;
       }
 
       .stat-value {
@@ -609,8 +629,8 @@ $text-muted:    #9aa1b5;
 
         .trend-text {
           font-size: 10px;
-          font-weight: 500;
-          color: #475569;
+          font-weight: 600;
+          color: #1e293b;
         }
       }
     }
@@ -630,8 +650,8 @@ $text-muted:    #9aa1b5;
 
       p {
         font-size: 11px;
-        font-weight: 500;
-        color: #475569;
+        font-weight: 600;
+        color: #1e293b;
       }
     }
   }
@@ -651,8 +671,8 @@ $text-muted:    #9aa1b5;
 
     p {
       font-size: 11px;
-      font-weight: 500;
-      color: #334155;
+      font-weight: 600;
+      color: #1e293b;
     }
   }
 }
@@ -667,23 +687,66 @@ $text-muted:    #9aa1b5;
   }
 }
 
-/* High contrast & clarity overrides for charts on mobile & tablets */
-@media (max-width: 1199px) {
-  .recharts-cartesian-axis-tick text {
-    fill: #334155 !important;
+/* High contrast & dark readable typography overrides for mobile & tablets */
+@media (max-width: 1199.98px) {
+  .dashboard-header .dashboard-subtitle {
+    color: #0f172a !important;
+    font-weight: 600 !important;
+  }
+
+  .stat-card {
+    .stat-info .stat-name {
+      color: #0f172a !important;
+      font-weight: 700 !important;
+    }
+    .stat-trend .trend-text {
+      color: #1e293b !important;
+      font-weight: 600 !important;
+    }
+  }
+
+  .chart-card .chart-header {
+    h3 {
+      color: #0f172a !important;
+      font-weight: 700 !important;
+    }
+    p {
+      color: #1e293b !important;
+      font-weight: 600 !important;
+    }
+  }
+
+  .info-card {
+    h4 {
+      color: #0f172a !important;
+      font-weight: 700 !important;
+    }
+    p {
+      color: #1e293b !important;
+      font-weight: 600 !important;
+    }
+  }
+
+  .recharts-cartesian-axis-tick text,
+  .recharts-cartesian-axis-tick-value,
+  .recharts-cartesian-axis-tick-value tspan {
+    fill: #0f172a !important;
+    color: #0f172a !important;
     font-size: 11px !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
   }
 
   .recharts-legend-item-text {
     font-size: 11px !important;
     font-weight: 600 !important;
-    color: #1e293b !important;
+    color: #0f172a !important;
   }
 
-  .recharts-text.recharts-pie-label-text {
+  .recharts-text.recharts-pie-label-text,
+  .recharts-pie-labels text {
     fill: #0f172a !important;
-    font-weight: 700 !important;
+    color: #0f172a !important;
+    font-weight: 800 !important;
     font-size: 12px !important;
   }
 

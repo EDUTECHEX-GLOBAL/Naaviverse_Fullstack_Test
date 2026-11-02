@@ -94,7 +94,45 @@ const CATEGORY_CONFIG = {
 const getRoleConf = (role) =>
   CATEGORY_CONFIG[role?.toLowerCase()] || { Icon: () => null, label: "Unknown" };
 
-const formatPrice = (cost) => (!cost || cost === "0" || cost === 0 ? "Free" : `$${cost}`);
+const formatPrice = (cost) => {
+  if (!cost || cost === "0" || cost === 0 || cost === "Free" || cost === "free") return "Free";
+  const str = String(cost).trim().replace(/^\$+/, "").trim();
+  return str.startsWith("₹") ? str : `₹${str}`;
+};
+
+const getAccessPriceConflict = (accessVal, costVal) => {
+  const normAccess = String(accessVal || "").trim().toLowerCase();
+  const rawCost = String(costVal || "").trim().replace(/[₹$,\s]/g, "");
+  const normCostLower = rawCost.toLowerCase();
+
+  const isCostZeroOrFree = !rawCost || rawCost === "0" || normCostLower === "free" || Number(rawCost) === 0;
+  const numCost = Number(rawCost);
+  const isCostPositive = !isNaN(numCost) && numCost > 0;
+
+  if (normAccess === "free") {
+    if (isCostPositive || (!isCostZeroOrFree && rawCost !== "")) {
+      return {
+        hasConflict: true,
+        type: "free_with_price",
+        message: `Conflict: Access is set to Free, but Price is ₹${rawCost}. Free items cannot have a price greater than ₹0.`,
+        priceError: true,
+        accessError: true,
+      };
+    }
+  } else if (normAccess === "paid") {
+    if (isCostZeroOrFree) {
+      return {
+        hasConflict: true,
+        type: "paid_with_zero",
+        message: "Conflict: Access is set to Paid, but Price is ₹0 or Free. Paid items must have a price greater than ₹0.",
+        priceError: true,
+        accessError: true,
+      };
+    }
+  }
+
+  return { hasConflict: false, type: null, message: "", priceError: false, accessError: false };
+};
 
 const getMarketplaceStarRating = (item) => {
   const avg = Number(item?.average_rating || item?.analytics?.average_rating || item?.rating || 0);
@@ -125,6 +163,14 @@ const RenderStars = ({ rating = 5, size = 12 }) => {
   );
 };
 
+const LAYER_OPTIONS = [
+  { value: "", label: "—" },
+  { value: "Foundation", label: "Foundation" },
+  { value: "macro", label: "Macro" },
+  { value: "micro", label: "Micro" },
+  { value: "nano", label: "Nano" },
+];
+
 const parseFeatures = (features) => {
   if (!features) return [];
   if (Array.isArray(features)) return features;
@@ -140,8 +186,11 @@ const AdminMarketplace = () => {
   const [nameSearch,     setNameSearch]     = useState("");
   const [selectedItem,   setSelectedItem]   = useState(null);
   const [isEditing,      setIsEditing]      = useState(false);
+  const [isSaving,       setIsSaving]       = useState(false);
   const [tableKey,       setTableKey]       = useState(0);
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
+  const [layerDropdownOpen, setLayerDropdownOpen] = useState(false);
+  const layerDropdownRef = useRef(null);
   const [editFormData,   setEditFormData]   = useState({
     name: "", access: "", cost: "", discount: "", layer: "",
     duration: "", goal: "", features: "", outcomes: "", iterations: "", partner_email: "",
@@ -184,11 +233,14 @@ const AdminMarketplace = () => {
 
   useEffect(() => { fetchMarketplaceItems(); }, [fetchMarketplaceItems]);
 
-  // Close the category dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setCatDropdownOpen(false);
+      }
+      if (layerDropdownRef.current && !layerDropdownRef.current.contains(e.target)) {
+        setLayerDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -204,10 +256,24 @@ const AdminMarketplace = () => {
 
   const handleEditClick = () => {
     setIsEditing(true);
+    let initialCost   = selectedItem.cost   || "";
+    let initialAccess = selectedItem.access || "";
+
+    const cleanCost = String(initialCost).replace(/[₹$,\s]/g, "").trim().toLowerCase();
+    const numCost = Number(cleanCost);
+
+    // Auto-harmonize access based on actual cost
+    if (!isNaN(numCost) && numCost > 0) {
+      initialAccess = "Paid";
+    } else if (cleanCost === "0" || cleanCost === "free" || !cleanCost) {
+      initialAccess = "Free";
+      initialCost = "0";
+    }
+
     setEditFormData({
       name:          selectedItem.name          || "",
-      access:        selectedItem.access        || "",
-      cost:          selectedItem.cost          || "",
+      access:        initialAccess,
+      cost:          initialCost,
       discount:      selectedItem.discount      || "",
       layer:         selectedItem.layer         || "",
       duration:      selectedItem.duration      || "",
@@ -221,14 +287,65 @@ const AdminMarketplace = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setEditFormData((prev) => ({ ...prev, [name]: value }));
+    setEditFormData((prev) => {
+      let next = { ...prev, [name]: value };
+
+      if (name === "access") {
+        const norm = value.trim().toLowerCase();
+        if (norm === "free") {
+          const rawCost = String(prev.cost || "").trim().replace(/[₹$,\s]/g, "");
+          const numCost = Number(rawCost);
+          if (!isNaN(numCost) && numCost > 0) {
+            next.cost = "0";
+          }
+        } else if (norm === "paid") {
+          const rawCost = String(prev.cost || "").trim().toLowerCase();
+          if (!rawCost || rawCost === "0" || rawCost === "free") {
+            next.cost = "";
+          }
+        }
+      } else if (name === "cost") {
+        const rawCost = String(value || "").trim().replace(/[₹$,\s]/g, "");
+        const numCost = Number(rawCost);
+        if (!isNaN(numCost) && numCost > 0) {
+          if ((prev.access || "").trim().toLowerCase() !== "paid") {
+            next.access = "Paid";
+          }
+        } else if (value.trim().toLowerCase() === "free" || rawCost === "0") {
+          if ((prev.access || "").trim().toLowerCase() !== "free") {
+            next.access = "Free";
+          }
+        }
+      }
+
+      return next;
+    });
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
+    const conflict = getAccessPriceConflict(editFormData.access, editFormData.cost);
+    if (conflict.hasConflict) {
+      toast.error(conflict.message);
+      return;
+    }
+
+    const normAccess = (editFormData.access || "").trim().toLowerCase();
+    let finalPayload = { ...editFormData };
+
+    if (normAccess === "free") {
+      finalPayload.access = "Free";
+      finalPayload.cost = "0";
+    } else if (normAccess === "paid") {
+      finalPayload.access = "Paid";
+      finalPayload.cost = String(editFormData.cost || "").replace(/[₹$,\s]/g, "");
+    }
+
+    setIsSaving(true);
     try {
       const res = await axios.put(
         `${BASE_URL}/api/marketplace/admin/update/${selectedItem._id}`,
-        editFormData
+        finalPayload
       );
       if (res.data?.status) {
         toast.success("Item updated!");
@@ -236,10 +353,13 @@ const AdminMarketplace = () => {
         setItems((prev) => prev.map((i) => (i._id === selectedItem._id ? updated : i)));
         setSelectedItem(updated);
         setIsEditing(false);
+        setLayerDropdownOpen(false);
       } else toast.error(res.data?.message || "Failed to update");
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Error updating item.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -269,8 +389,19 @@ const AdminMarketplace = () => {
     }
   }, [selectedItem, fetchScoreBreakdown]);
 
-  const handleCancel     = () => { setIsEditing(false); setEditFormData({}); };
-  const handleCloseModal = () => { setSelectedItem(null); setIsEditing(false); setScoreBreakdown(null); };
+  const handleCancel = () => {
+    if (isSaving) return;
+    setIsEditing(false);
+    setEditFormData({});
+    setLayerDropdownOpen(false);
+  };
+  const handleCloseModal = () => {
+    if (isSaving) return;
+    setSelectedItem(null);
+    setIsEditing(false);
+    setScoreBreakdown(null);
+    setLayerDropdownOpen(false);
+  };
 
   // Counts per category (no email/name filter — used in the dropdown menu)
   const categoryCounts = Object.keys(CATEGORY_CONFIG).reduce((acc, cat) => {
@@ -397,19 +528,53 @@ const AdminMarketplace = () => {
           </div>
           <div className="adm-panel__bar-right">
             <div className="adm-search">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" style={{ flexShrink: 0 }}>
                 <circle cx="11" cy="11" r="8"/><path d="M21 21L16.65 16.65" strokeLinecap="round"/>
               </svg>
               <input type="text" placeholder="Search name..." value={nameSearch}
                 onChange={(e) => setNameSearch(e.target.value)} className="adm-search__input" />
+              {nameSearch && (
+                <button
+                  type="button"
+                  className="adm-search__clear"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNameSearch("");
+                  }}
+                  title="Clear"
+                  aria-label="Clear name search"
+                >
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
             </div>
             <div className="adm-search">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" style={{ flexShrink: 0 }}>
                 <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z"/>
                 <polyline points="22,6 12,13 2,6"/>
               </svg>
               <input type="text" placeholder="Search email..." value={emailSearch}
                 onChange={(e) => setEmailSearch(e.target.value)} className="adm-search__input" />
+              {emailSearch && (
+                <button
+                  type="button"
+                  className="adm-search__clear"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEmailSearch("");
+                  }}
+                  title="Clear"
+                  aria-label="Clear email search"
+                >
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -452,10 +617,12 @@ const AdminMarketplace = () => {
                         <span className="adm-row__icon">
                           <ac.Icon />
                         </span>
-                        <span className="adm-row__name">{item.name || "Untitled"}</span>
+                        <span className="adm-row__name" title={item.name || "Untitled"}>
+                          {item.name || "Untitled"}
+                        </span>
                       </div>
                     </td>
-                    <td className="adm-row__email" data-label="Email">
+                    <td className="adm-row__email" data-label="Email" title={item.partner_email || ""}>
                       {item.partner_email || <span className="adm-nil">—</span>}
                     </td>
                     <td data-label="Rating">
@@ -491,6 +658,9 @@ const AdminMarketplace = () => {
         const RcIcon = rc.Icon;
         const layer  = selectedItem.layer?.toUpperCase();
         const featureList = parseFeatures(selectedItem.features);
+        const conflict = isEditing
+          ? getAccessPriceConflict(editFormData.access, editFormData.cost)
+          : { hasConflict: false };
 
         return createPortal(
           <div className="adm-overlay" onClick={handleCloseModal}>
@@ -536,8 +706,33 @@ const AdminMarketplace = () => {
                     </button>
                   ) : (
                     <div className="adm-modal__edit-actions">
-                      <button className="adm-modal__save-btn" onClick={handleSave}>Save</button>
-                      <button className="adm-modal__cancel-btn" onClick={handleCancel}>Cancel</button>
+                      <button
+                        type="button"
+                        className={`adm-modal__save-btn ${(conflict.hasConflict || isSaving) ? "adm-modal__save-btn--disabled" : ""} ${isSaving ? "adm-modal__save-btn--loading" : ""}`}
+                        onClick={handleSave}
+                        disabled={isSaving || conflict.hasConflict}
+                        title={conflict.hasConflict ? conflict.message : isSaving ? "Saving changes..." : "Save changes"}
+                      >
+                        {isSaving ? (
+                          <>
+                            <svg className="adm-save-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8">
+                              <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                              <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                            </svg>
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          "Save"
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="adm-modal__cancel-btn"
+                        onClick={handleCancel}
+                        disabled={isSaving}
+                      >
+                        Cancel
+                      </button>
                     </div>
                   )}
                 </div>
@@ -551,26 +746,51 @@ const AdminMarketplace = () => {
                   <div className="adm-chip">
                     <span className="adm-chip__label">Rating</span>
                     <span className="adm-rating-badge adm-rating-badge--modal">
-                      <RenderStars rating={getMarketplaceStarRating(selectedItem)} size={13} />
+                      <RenderStars rating={getMarketplaceStarRating(selectedItem)} size={12} />
                       <span>{getMarketplaceStarRating(selectedItem)}</span>
                     </span>
                   </div>
                   <div className="adm-chip">
                     <span className="adm-chip__label">Access</span>
                     {!isEditing ? (
-                      <span className={`adm-chip__val ${(!selectedItem.cost || selectedItem.cost === "0") ? "adm-chip__val--free" : "adm-chip__val--paid"}`}>
-                        {selectedItem.access || "Free"}
+                      <span
+                        className={`adm-chip__val ${(!selectedItem.cost || selectedItem.cost === "0") ? "adm-chip__val--free" : "adm-chip__val--paid"}`}
+                        title={(!selectedItem.cost || selectedItem.cost === "0") ? "Free" : (selectedItem.access && selectedItem.access.toLowerCase() !== "free" ? selectedItem.access : "Paid")}
+                      >
+                        {(!selectedItem.cost || selectedItem.cost === "0") ? "Free" : (selectedItem.access && selectedItem.access.toLowerCase() !== "free" ? selectedItem.access : "Paid")}
                       </span>
                     ) : (
-                      <input name="access" value={editFormData.access} onChange={handleInputChange} className="adm-chip__input" />
+                      <>
+                        <input
+                          name="access"
+                          list="adm-access-list"
+                          value={editFormData.access}
+                          onChange={handleInputChange}
+                          className={`adm-chip__input ${conflict.accessError ? "adm-chip__input--error" : ""}`}
+                          placeholder="Free or Paid"
+                          autoComplete="off"
+                        />
+                        <datalist id="adm-access-list">
+                          <option value="Free" />
+                          <option value="Paid" />
+                        </datalist>
+                      </>
                     )}
                   </div>
                   <div className="adm-chip">
                     <span className="adm-chip__label">Price</span>
                     {!isEditing ? (
-                      <span className="adm-chip__val">{formatPrice(selectedItem.cost)}</span>
+                      <span className="adm-chip__val" title={formatPrice(selectedItem.cost)}>
+                        {formatPrice(selectedItem.cost)}
+                      </span>
                     ) : (
-                      <input name="cost" value={editFormData.cost} onChange={handleInputChange} className="adm-chip__input" />
+                      <input
+                        name="cost"
+                        value={editFormData.cost}
+                        onChange={handleInputChange}
+                        className={`adm-chip__input ${conflict.priceError ? "adm-chip__input--error" : ""}`}
+                        placeholder={editFormData.access?.toLowerCase() === "free" ? "0" : "Price (₹)"}
+                      />
                     )}
                   </div>
                   {(selectedItem.discount || isEditing) && (
@@ -589,13 +809,40 @@ const AdminMarketplace = () => {
                       {!isEditing ? (
                         <span className="adm-layer-pill">{layer}</span>
                       ) : (
-                        <select name="layer" value={editFormData.layer} onChange={handleInputChange} className="adm-chip__input">
-                          <option value="">—</option>
-                          <option value="Foundation">Foundation</option>
-                          <option value="macro">Macro</option>
-                          <option value="micro">Micro</option>
-                          <option value="nano">Nano</option>
-                        </select>
+                        <div className="adm-layer-select-wrap" ref={layerDropdownRef}>
+                          <button
+                            type="button"
+                            className="adm-layer-select-btn"
+                            onClick={() => setLayerDropdownOpen((prev) => !prev)}
+                            aria-expanded={layerDropdownOpen}
+                          >
+                            <span>
+                              {LAYER_OPTIONS.find((o) => o.value.toLowerCase() === (editFormData.layer || "").toLowerCase())?.label || editFormData.layer || "—"}
+                            </span>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: layerDropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }}>
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </button>
+                          {layerDropdownOpen && (
+                            <div className="adm-layer-select-menu">
+                              {LAYER_OPTIONS.map((opt) => {
+                                const isSelected = (editFormData.layer || "").toLowerCase() === opt.value.toLowerCase();
+                                return (
+                                  <div
+                                    key={opt.value}
+                                    className={`adm-layer-select-opt ${isSelected ? "is-selected" : ""}`}
+                                    onClick={() => {
+                                      setEditFormData((prev) => ({ ...prev, layer: opt.value }));
+                                      setLayerDropdownOpen(false);
+                                    }}
+                                  >
+                                    {opt.label}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -620,6 +867,49 @@ const AdminMarketplace = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Conflict Alert Banner */}
+                {isEditing && conflict.hasConflict && (
+                  <div className="adm-conflict-alert">
+                    <div className="adm-conflict-alert__content">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h20.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                      <span>{conflict.message}</span>
+                    </div>
+                    <div className="adm-conflict-alert__actions">
+                      {conflict.type === "free_with_price" && (
+                        <>
+                          <button
+                            type="button"
+                            className="adm-conflict-alert__btn adm-conflict-alert__btn--primary"
+                            onClick={() => setEditFormData((prev) => ({ ...prev, access: "Paid" }))}
+                          >
+                            Set Access to Paid
+                          </button>
+                          <button
+                            type="button"
+                            className="adm-conflict-alert__btn"
+                            onClick={() => setEditFormData((prev) => ({ ...prev, cost: "0" }))}
+                          >
+                            Set Price to ₹0 (Free)
+                          </button>
+                        </>
+                      )}
+                      {conflict.type === "paid_with_zero" && (
+                        <button
+                          type="button"
+                          className="adm-conflict-alert__btn adm-conflict-alert__btn--primary"
+                          onClick={() => setEditFormData((prev) => ({ ...prev, access: "Free", cost: "0" }))}
+                        >
+                          Set Access to Free
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Text fields */}
                 {(selectedItem.goal || isEditing) && (

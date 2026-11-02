@@ -42,24 +42,24 @@ body, h1, h2, h3, h4, h5, h6, p, a, span, button, input, select, textarea, label
   font-family: "Font Awesome 5 Free", "FontAwesome" !important;
 }
 
-/* ── Mobile Popup Message (Toast): Position 'X' in upper left corner ── */
+/* ── Mobile & Tablet Popup Message (Toast): Position 'X' in Top-Right Corner ── */
 @media (max-width: 991px) {
   .Toastify__toast {
     position: relative !important;
-    padding-left: 32px !important;
-    padding-right: 14px !important;
+    padding-left: 14px !important;
+    padding-right: 34px !important;
     align-items: center !important;
   }
 
   .Toastify__close-button {
     position: absolute !important;
-    top: 8px !important;
-    left: 8px !important;
-    right: auto !important;
+    top: 9px !important;
+    right: 9px !important;
+    left: auto !important;
     align-self: flex-start !important;
     margin: 0 !important;
-    padding: 2px !important;
-    z-index: 2 !important;
+    padding: 0 !important;
+    z-index: 5 !important;
   }
 }
 

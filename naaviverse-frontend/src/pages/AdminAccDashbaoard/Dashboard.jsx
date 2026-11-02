@@ -351,6 +351,12 @@ export default function Dashboard() {
     markOneRead(n.id);
     setShowNotifDropdown(false);
 
+    const isPartnerNotif =
+      n.targetTab === "partnerActivity" ||
+      n.role === "partner" ||
+      (n.title && /partner/i.test(n.title)) ||
+      (n.desc && /partner|signed in to the portal/i.test(n.desc));
+
     if (n.targetTab === "paths" || n.type === "path") {
       navigate("/admin/dashboard/paths?tab=active");
     } else if (n.targetTab === "crm") {
@@ -372,9 +378,51 @@ export default function Dashboard() {
         }
       }
       navigate("/admin/dashboard/marketplace?tab=assistance");
+    } else if (isPartnerNotif) {
+      setView("partnerActivity");
+      if (typeof fetchPartnerActivity === "function") {
+        fetchPartnerActivity();
+      }
+      const notifEmail = (
+        n.actorEmail ||
+        n.email ||
+        (n.desc ? (n.desc.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0] || "") : "")
+      ).toLowerCase();
+
+      const matched = partnerActivityUsers.find((p) => {
+        if (n.targetId && (String(p.id) === String(n.targetId) || String(p._id) === String(n.targetId))) return true;
+        if (notifEmail && p.email && p.email.toLowerCase() === notifEmail) return true;
+        if (p.name && n.desc && n.desc.toLowerCase().includes(p.name.toLowerCase())) return true;
+        return false;
+      });
+
+      if (matched) {
+        const pal = matched.palette || PARTNER_AVATAR_PALETTE[0];
+        setSelectedPartnerUser({ ...matched, palette: pal });
+      } else {
+        setSelectedPartnerUser(null);
+      }
     } else if (n.targetTab === "activity") {
       setView("activity");
-      setSelectedActivityUser(null);
+      const notifEmail = (
+        n.actorEmail ||
+        n.email ||
+        (n.desc ? (n.desc.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0] || "") : "")
+      ).toLowerCase();
+
+      const matched = activityUsers.find((u) => {
+        if (n.targetId && (String(u.id) === String(n.targetId) || String(u._id) === String(n.targetId))) return true;
+        if (notifEmail && u.email && u.email.toLowerCase() === notifEmail) return true;
+        if (u.name && n.desc && n.desc.toLowerCase().includes(u.name.toLowerCase())) return true;
+        return false;
+      });
+
+      if (matched) {
+        const pal = matched.palette || AVATAR_PALETTE[0];
+        setSelectedActivityUser({ ...matched, palette: pal });
+      } else {
+        setSelectedActivityUser(null);
+      }
     } else if (n.type === "purchase") {
       setView("purchaseActivity");
       setSelectedPurchase(null);
@@ -499,6 +547,16 @@ export default function Dashboard() {
   const [fullUserData, setFullUserData] = useState(null);
   const [loadingUserDetail, setLoadingUserDetail] = useState(false);
   const [selectedActivityUser, setSelectedActivityUser] = useState(null);
+  const [approvalConfirmModal, setApprovalConfirmModal] = useState(null); // { type: "approve" | "reject", id, roleName, businessName }
+
+  useEffect(() => {
+    if (!approvalConfirmModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setApprovalConfirmModal(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [approvalConfirmModal]);
 
   // ── User Path Requests state ──────────────────────────────────────────────
   const [pathRequests, setPathRequests] = useState([]);
@@ -553,24 +611,45 @@ export default function Dashboard() {
   const dropdownRef = useRef(null);
   const scopeDropdownRef = useRef(null);
 
-  const fetchApprovals = (role, setter) => {
-    setLoadingData(true);
-    axios
+  const fetchApprovals = useCallback((role, setter, showLoading = true) => {
+    if (showLoading) setLoadingData(true);
+    return axios
       .get(`${BASE_URL}/api/approvals/get?role=${role}`)
-      .then((res) => { if (res.data.status) setter(res.data.data); })
-      .catch((err) => console.error(`Error fetching ${role} approvals`, err))
-      .finally(() => setLoadingData(false));
-  };
+      .then((res) => {
+        if (res.data?.status) {
+          setter(res.data.data || []);
+        }
+      })
+      .catch((err) => console.error(`Error fetching ${role} approvals:`, err))
+      .finally(() => {
+        if (showLoading) setLoadingData(false);
+      });
+  }, []);
 
-  useEffect(() => { if (view === "approvals" && roleView === "partner") fetchApprovals("Partner", setPartnerData); }, [view, roleView]);
+  // Fetch both Partner & User approvals and Path Requests immediately on initial render & section load
+  const fetchAllApprovalsData = useCallback(() => {
+    fetchApprovals("Partner", setPartnerData, roleView === "partner");
+    fetchApprovals("User", setUserData, roleView === "user");
+    fetchPathRequests("all");
+  }, [fetchApprovals, fetchPathRequests, roleView]);
+
+  // Initial render: immediately pre-fetch all counts so dropdown has accurate numbers without any click
   useEffect(() => {
-    if (view === "approvals" && roleView === "user" && userData.length === 0)
-      fetchApprovals("User", setUserData);
-  }, [roleView, view, userData.length]);
+    fetchAllApprovalsData();
+  }, [fetchAllApprovalsData]);
+
+  // Whenever switching to approvals section or changing role views, ensure counts and table data are up-to-date
   useEffect(() => {
-    if (view === "approvals" && roleView === "pathRequests")
-      fetchPathRequests(pathRequestsTab);
-  }, [roleView, view, pathRequestsTab, fetchPathRequests]);
+    if (view === "approvals") {
+      fetchApprovals("Partner", setPartnerData, roleView === "partner");
+      fetchApprovals("User", setUserData, roleView === "user");
+      if (roleView === "pathRequests") {
+        fetchPathRequests(pathRequestsTab);
+      } else {
+        fetchPathRequests("all");
+      }
+    }
+  }, [view, roleView, pathRequestsTab, fetchApprovals, fetchPathRequests]);
 
   useEffect(() => {
     if (!selected) { setFullUserData(null); return; }
@@ -613,8 +692,164 @@ export default function Dashboard() {
     });
   };
 
-  const deactivate = (id) => {
-    if (!window.confirm("Are you sure you want to deactivate this account? The user/partner status will be set to inactive in DB.")) return;
+  const handleConfirmApprovalAction = () => {
+    if (!approvalConfirmModal) return;
+    const { type, id } = approvalConfirmModal;
+    if (type === "approve") {
+      approve(id);
+    } else if (type === "reject") {
+      reject(id);
+    } else if (type === "activate") {
+      executeActivate(id);
+    } else if (type === "deactivate") {
+      executeDeactivate(id);
+    } else if (type === "delete") {
+      executeDelete(id);
+    }
+    setApprovalConfirmModal(null);
+  };
+
+  const renderApprovalConfirmModal = () => {
+    if (!approvalConfirmModal) return null;
+    const { type, roleName, businessName } = approvalConfirmModal;
+    const isApprove = type === "approve";
+    const isReject = type === "reject";
+    const isActivate = type === "activate";
+    const isDeactivate = type === "deactivate";
+    const isDelete = type === "delete";
+    const entityLabel = roleName || "partner";
+
+    let title = "";
+    let message = "";
+    let confirmBtnText = "Confirm";
+    let iconClass = "";
+    let btnClass = "";
+    let iconSvg = null;
+
+    if (isApprove) {
+      title = `Approve ${entityLabel === "partner" ? "Partner" : "User"}`;
+      message = `Are you sure you want to approve this ${entityLabel}?`;
+      confirmBtnText = "Confirm";
+      iconClass = "icon-approve";
+      btnClass = "btn-confirm-approve";
+      iconSvg = (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    } else if (isReject) {
+      title = `Reject ${entityLabel === "partner" ? "Partner" : "User"}`;
+      message = `Are you sure you want to reject this ${entityLabel}?`;
+      confirmBtnText = "Confirm";
+      iconClass = "icon-reject";
+      btnClass = "btn-confirm-reject";
+      iconSvg = (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    } else if (isActivate) {
+      title = `Activate ${entityLabel === "partner" ? "Partner" : "User"} Account`;
+      message = `Are you sure you want to activate this account? The ${entityLabel} status will be set to active in DB.`;
+      confirmBtnText = "Confirm Activate";
+      iconClass = "icon-activate";
+      btnClass = "btn-confirm-activate";
+      iconSvg = (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 6L9 17l-5-5" />
+        </svg>
+      );
+    } else if (isDeactivate) {
+      title = `Deactivate ${entityLabel === "partner" ? "Partner" : "User"} Account`;
+      message = `Are you sure you want to deactivate this account? The ${entityLabel} status will be set to inactive in DB.`;
+      confirmBtnText = "Confirm Deactivate";
+      iconClass = "icon-deactivate";
+      btnClass = "btn-confirm-deactivate";
+      iconSvg = (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+        </svg>
+      );
+    } else if (isDelete) {
+      title = `Permanently Delete ${entityLabel === "partner" ? "Partner" : "User"}`;
+      message = `Are you sure you want to permanently delete this ${entityLabel} from DB? This action cannot be undone.`;
+      confirmBtnText = "Delete Permanently";
+      iconClass = "icon-delete";
+      btnClass = "btn-confirm-delete";
+      iconSvg = (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="3 6 5 6 21 6" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <line x1="10" y1="11" x2="10" y2="17" />
+          <line x1="14" y1="11" x2="14" y2="17" />
+        </svg>
+      );
+    }
+
+    return ReactDOM.createPortal(
+      <div
+        className="approval-confirm-overlay"
+        onClick={() => setApprovalConfirmModal(null)}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="approval-confirm-title"
+      >
+        <div
+          className="approval-confirm-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={`approval-confirm-icon-wrap ${iconClass}`}>
+            {iconSvg}
+          </div>
+
+          <h3 id="approval-confirm-title" className="approval-confirm-title">
+            {title}
+          </h3>
+
+          <p className="approval-confirm-message">
+            {message}
+          </p>
+
+          {businessName && (
+            <div className="approval-confirm-target">
+              <span className="target-name">{businessName}</span>
+            </div>
+          )}
+
+          <div className="approval-confirm-actions">
+            <button
+              type="button"
+              className="btn-confirm-cancel"
+              onClick={() => setApprovalConfirmModal(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={`btn-confirm-action ${btnClass}`}
+              onClick={handleConfirmApprovalAction}
+            >
+              {confirmBtnText}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const executeActivate = (id) => {
+    axios.put(`${BASE_URL}/api/approvals/update/${id}`, { status: "approved" }).then((res) => {
+      if (res.data.status) {
+        setPartnerData((prev) => prev.map((i) => (i._id === id ? { ...i, status: "approved" } : i)));
+        setUserData((prev) => prev.map((i) => (i._id === id ? { ...i, status: "approved" } : i)));
+        if (selected?._id === id) setSelected((p) => ({ ...p, status: "approved" }));
+      }
+    }).catch((err) => console.error("Activate error:", err));
+  };
+
+  const executeDeactivate = (id) => {
     axios.put(`${BASE_URL}/api/approvals/deactivate/${id}`).then((res) => {
       if (res.data.status) {
         setPartnerData((prev) => prev.map((i) => (i._id === id ? { ...i, status: "deactivated" } : i)));
@@ -624,8 +859,7 @@ export default function Dashboard() {
     }).catch((err) => console.error("Deactivate error:", err));
   };
 
-  const deleteApproval = (id) => {
-    if (!window.confirm("Are you sure you want to permanently delete this user/partner from DB? This action cannot be undone.")) return;
+  const executeDelete = (id) => {
     axios.delete(`${BASE_URL}/api/approvals/delete/${id}`).then((res) => {
       if (res.data.status) {
         setPartnerData((prev) => prev.filter((i) => i._id !== id));
@@ -633,6 +867,39 @@ export default function Dashboard() {
         if (selected?._id === id) setSelected(null);
       }
     }).catch((err) => console.error("Delete error:", err));
+  };
+
+  const activate = (id, role, name) => {
+    const roleName = role || (selected && selected._id === id ? (selected.role?.toLowerCase() === "partner" ? "partner" : "user") : (roleView === "partner" ? "partner" : "user"));
+    const businessName = name || (selected && selected._id === id ? (selected.businessName || (selected.firstName ? `${selected.firstName} ${selected.lastName || ""}`.trim() : "")) : "");
+    setApprovalConfirmModal({
+      type: "activate",
+      id,
+      roleName,
+      businessName
+    });
+  };
+
+  const deactivate = (id, role, name) => {
+    const roleName = role || (selected && selected._id === id ? (selected.role?.toLowerCase() === "partner" ? "partner" : "user") : (roleView === "partner" ? "partner" : "user"));
+    const businessName = name || (selected && selected._id === id ? (selected.businessName || (selected.firstName ? `${selected.firstName} ${selected.lastName || ""}`.trim() : "")) : "");
+    setApprovalConfirmModal({
+      type: "deactivate",
+      id,
+      roleName,
+      businessName
+    });
+  };
+
+  const deleteApproval = (id, role, name) => {
+    const roleName = role || (selected && selected._id === id ? (selected.role?.toLowerCase() === "partner" ? "partner" : "user") : (roleView === "partner" ? "partner" : "user"));
+    const businessName = name || (selected && selected._id === id ? (selected.businessName || (selected.firstName ? `${selected.firstName} ${selected.lastName || ""}`.trim() : "")) : "");
+    setApprovalConfirmModal({
+      type: "delete",
+      id,
+      roleName,
+      businessName
+    });
   };
 
   // ── ALL_STAT_CARDS ─────────────────────────────────────────────────────────
@@ -885,18 +1152,18 @@ export default function Dashboard() {
                     </svg>
                     <span className="eng-donut-val">87%</span>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: "var(--slate-800)", lineHeight: 1 }}>87%</div>
-                    <div style={{ fontSize: 12, color: "var(--slate-400)", marginTop: 3 }}>Overall avg. engagement</div>
-                    <div style={{ fontSize: 12, color: "#16a34a", marginTop: 6, display: "flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
+                  <div className="eng-overall-details">
+                    <div className="eng-overall-pct" style={{ fontSize: 22, fontWeight: 700, color: "var(--slate-800)", lineHeight: 1 }}>87%</div>
+                    <div className="eng-overall-lbl" style={{ fontSize: 12, color: "var(--slate-400)", marginTop: 3 }}>Overall avg. engagement</div>
+                    <div className="eng-overall-trend" style={{ fontSize: 12, color: "#16a34a", marginTop: 6, display: "flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
                       ↑ +4.2% vs last week
                     </div>
-                    <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
-                      <div style={{ fontSize: 11, color: "var(--slate-400)" }}>
+                    <div className="eng-overall-stats" style={{ display: "flex", gap: 16, marginTop: 10 }}>
+                      <div className="eng-stat-item" style={{ fontSize: 11, color: "var(--slate-400)" }}>
                         <span style={{ fontWeight: 700, fontSize: 14, color: "var(--slate-700)" }}>2,841</span>
                         <div>active sessions</div>
                       </div>
-                      <div style={{ fontSize: 11, color: "var(--slate-400)" }}>
+                      <div className="eng-stat-item" style={{ fontSize: 11, color: "var(--slate-400)" }}>
                         <span style={{ fontWeight: 700, fontSize: 14, color: "var(--slate-700)" }}>18.4m</span>
                         <div>avg. duration</div>
                       </div>
@@ -1268,9 +1535,9 @@ export default function Dashboard() {
                             <div className="row-avatar" style={{ background: palette.color, color: palette.textColor, flexShrink: 0 }}>
                               {u.initials || (u.name?.trim() ? u.name.trim().split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() : null) || u.email?.slice(0, 2).toUpperCase() || "??"}
                             </div>
-                            <div style={{ minWidth: 0, overflow: "hidden" }}>
-                              <div className="business-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
-                              <div style={{ fontSize: 12, color: "var(--slate-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>
+                            <div style={{ minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
+                              <div className="business-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.25, margin: 0 }}>{u.name}</div>
+                              <div style={{ fontSize: 12, color: "var(--slate-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.25, margin: 0 }}>{u.email}</div>
                             </div>
                           </div>
                         </td>
@@ -1342,9 +1609,9 @@ export default function Dashboard() {
             <div className="details-hero-info">
               <div className="details-hero-top">
                 <h2>{u.name}</h2>
-                <span style={{ fontSize: 12, fontWeight: 600, color: STATUS_COLORS[u.status] || "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: STATUS_COLORS[u.status] || "#94a3b8", display: "inline-block" }} />
-                  {u.status?.charAt(0).toUpperCase() + u.status?.slice(1) || "Offline"}
+                <span className="details-hero-status" style={{ color: STATUS_COLORS[u.status] || "#94a3b8" }}>
+                  <span className="details-hero-status-dot" style={{ background: STATUS_COLORS[u.status] || "#94a3b8" }} />
+                  <span>{u.status?.charAt(0).toUpperCase() + u.status?.slice(1) || "Offline"}</span>
                 </span>
               </div>
               <div style={{ fontSize: 13, color: "var(--slate-400)" }}>{u.email} · Joined {u.joinedDays}</div>
@@ -1548,9 +1815,9 @@ export default function Dashboard() {
             <div className="details-hero-info">
               <div className="details-hero-top">
                 <h2>{u.name}</h2>
-                <span style={{ fontSize: 12, fontWeight: 600, color: PARTNER_STATUS_COLORS[u.status] || "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: PARTNER_STATUS_COLORS[u.status] || "#94a3b8", display: "inline-block" }} />
-                  {u.status?.charAt(0).toUpperCase() + u.status?.slice(1) || "Offline"}
+                <span className="details-hero-status" style={{ color: PARTNER_STATUS_COLORS[u.status] || "#94a3b8" }}>
+                  <span className="details-hero-status-dot" style={{ background: PARTNER_STATUS_COLORS[u.status] || "#94a3b8" }} />
+                  <span>{u.status?.charAt(0).toUpperCase() + u.status?.slice(1) || "Offline"}</span>
                 </span>
               </div>
               <div style={{ fontSize: 13, color: "var(--slate-400)" }}>
@@ -1668,18 +1935,20 @@ export default function Dashboard() {
                       const pal = PURCHASE_AVATAR_PALETTE[idx % PURCHASE_AVATAR_PALETTE.length];
                       return (
                         <tr key={p.id} className="table-row">
-                          <td className="col-pur-user">
-                            <div className="business-info">
-                              <div className="row-avatar" style={{ background: pal.color, color: pal.textColor }}>{p.initials}</div>
-                              <div>
-                                <div className="business-name">{p.user}</div>
-                                <div style={{ fontSize: 11, color: "var(--slate-400)" }}>{p.email}</div>
+                          <td className="col-pur-user" style={{ verticalAlign: "middle" }}>
+                            <div className="business-info" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div className="row-avatar" style={{ background: pal.color, color: pal.textColor, flexShrink: 0 }}>{p.initials}</div>
+                              <div className="pur-user-info" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 2, minWidth: 0 }}>
+                                <div className="business-name" style={{ fontSize: 13, fontWeight: 600, color: "var(--slate-800)", lineHeight: 1.25, margin: 0 }}>{p.user}</div>
+                                <div className="pur-user-email" style={{ fontSize: 11, color: "var(--slate-400)", lineHeight: 1.25, margin: 0 }}>{p.email}</div>
                               </div>
                             </div>
                           </td>
-                          <td className="col-pur-item">
-                            <div className="pur-item-title">{p.item}</div>
-                            <div className="pur-item-type">{p.type}</div>
+                          <td className="col-pur-item" style={{ verticalAlign: "middle" }}>
+                            <div className="pur-item-container" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 2, minWidth: 0 }}>
+                              <div className="pur-item-title" style={{ fontSize: 13, fontWeight: 600, color: "var(--slate-800)", lineHeight: 1.25, margin: 0 }}>{p.item}</div>
+                              <div className="pur-item-type" style={{ fontSize: 11, color: "var(--slate-400)", lineHeight: 1.25, margin: 0 }}>{p.type}</div>
+                            </div>
                           </td>
                           <td className="col-pur-plan"><span className={`plan-badge ${PLAN_BADGE_CLASS[p.plan]}`}>{p.plan}</span></td>
                           <td className="col-pur-market">{p.marketplace}</td>
@@ -1864,35 +2133,19 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid var(--slate-100)", display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap", alignItems: "center" }}>
+          <div className="path-req-actions">
             <button
-              style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                color: "white",
-                border: "none",
-                padding: "0 14px",
-                height: 30,
-                borderRadius: 6,
-                fontSize: 11.5,
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                boxShadow: "0 2px 8px rgba(99, 102, 241, 0.2)",
-              }}
+              type="button"
+              className="btn-path-action btn-path-primary"
               onClick={() => setView("customPathBuilder")}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              {req.status === "created" ? "Edit / Reconfigure Path" : <><SvgSparkles size={14} style={{ marginRight: 4 }} /> Create Custom Path & Steps</>}
+              {req.status === "created" ? "Edit / Reconfigure Path" : "Create Custom Path & Steps"}
             </button>
 
             {req.status !== "in_progress" && req.status !== "created" && (
               <button
-                style={{ background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", padding: "0 12px", height: 30, borderRadius: 6, fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}
+                type="button"
+                className="btn-path-action btn-path-progress"
                 onClick={() => updatePathRequestStatus(req._id, "in_progress")}
               >
                 Mark In Progress
@@ -1901,7 +2154,8 @@ export default function Dashboard() {
 
             {req.status !== "rejected" && req.status !== "created" && (
               <button
-                style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fee2e2", padding: "0 12px", height: 30, borderRadius: 6, fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}
+                type="button"
+                className="btn-path-action btn-path-reject"
                 onClick={() => updatePathRequestStatus(req._id, "rejected")}
               >
                 Reject Request
@@ -2008,13 +2262,35 @@ export default function Dashboard() {
                 </span>
               </div>
               <div className="action-buttons">
-                <button className="btn btn-reject" onClick={() => reject(selected._id)}>
+                <button
+                  type="button"
+                  className="btn btn-reject"
+                  onClick={() =>
+                    setApprovalConfirmModal({
+                      type: "reject",
+                      id: selected._id,
+                      roleName: isPartner ? "partner" : "user",
+                      businessName: selected.businessName || (selected.firstName ? `${selected.firstName} ${selected.lastName || ""}`.trim() : "")
+                    })
+                  }
+                >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                   </svg>
                   Reject
                 </button>
-                <button className="btn btn-approve" onClick={() => approve(selected._id)}>
+                <button
+                  type="button"
+                  className="btn btn-approve"
+                  onClick={() =>
+                    setApprovalConfirmModal({
+                      type: "approve",
+                      id: selected._id,
+                      roleName: isPartner ? "partner" : "user",
+                      businessName: selected.businessName || (selected.firstName ? `${selected.firstName} ${selected.lastName || ""}`.trim() : "")
+                    })
+                  }
+                >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M2 7l4 4 6-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -2025,22 +2301,45 @@ export default function Dashboard() {
           )}
 
           <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--slate-100)", display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", alignItems: "center" }}>
-            {selected.status !== "deactivated" && (
+            {selected.status === "deactivated" ? (
+              <button
+                style={{
+                  background: "#f0fdf4",
+                  color: "#15803d",
+                  border: "1px solid #bbf7d0",
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+                onClick={() => activate(selected._id, isPartner ? "partner" : "user", selected.businessName)}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+                Activate Account
+              </button>
+            ) : (
               <button
                 style={{ background: "#fff7ed", color: "#c2410c", border: "1px solid #ffedd5", padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-                onClick={() => deactivate(selected._id)}
+                onClick={() => deactivate(selected._id, isPartner ? "partner" : "user", selected.businessName)}
               >
                 Deactivate
               </button>
             )}
             <button
               style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fee2e2", padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-              onClick={() => deleteApproval(selected._id)}
+              onClick={() => deleteApproval(selected._id, isPartner ? "partner" : "user", selected.businessName)}
             >
               Delete
             </button>
           </div>
         </div>
+        {renderApprovalConfirmModal()}
       </div>
     );
   }
@@ -2117,8 +2416,8 @@ export default function Dashboard() {
                       <polygon points="3 11 22 2 13 21 11 13 3 11" />
                     </svg>
                   </span> Path Requests
-                  <span className="menu-count" style={{ background: pathRequestsCounts.pending > 0 ? "#fef3c7" : "#ede9fe", color: pathRequestsCounts.pending > 0 ? "#b45309" : "#6d28d9" }}>
-                    {pathRequestsCounts.pending > 0 ? `${pathRequestsCounts.pending} new` : pathRequestsCounts.total}
+                  <span className="menu-count" style={{ background: pathRequestsCounts?.pending > 0 ? "#fef3c7" : "#ede9fe", color: pathRequestsCounts?.pending > 0 ? "#b45309" : "#6d28d9" }}>
+                    {pathRequestsCounts?.pending > 0 ? `${pathRequestsCounts.pending} new` : (pathRequestsCounts?.total || pathRequests.length || 0)}
                   </span>
                 </button>
               </PortalDropdown>
@@ -2213,9 +2512,9 @@ export default function Dashboard() {
                               <div className="row-avatar" style={{ background: pal.color, color: pal.textColor }}>
                                 {req.userName?.slice(0, 2).toUpperCase() || "ST"}
                               </div>
-                              <div>
-                                <div className="business-name">{req.userName}</div>
-                                <div style={{ fontSize: 11, color: "var(--slate-400)" }}>{req.userEmail}</div>
+                              <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 2, minWidth: 0 }}>
+                                <div className="business-name" style={{ lineHeight: 1.25, margin: 0 }}>{req.userName}</div>
+                                <div style={{ fontSize: 11, color: "var(--slate-400)", lineHeight: 1.25, margin: 0 }}>{req.userEmail}</div>
                               </div>
                             </div>
                           </td>
@@ -2292,14 +2591,16 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {filtered.length > 0 ? (
-                  filtered.map((item) => (
+                  filtered.map((item) => {
+                    const targetName = item.businessName || (item.firstName ? `${item.firstName} ${item.lastName || ""}`.trim() : item.email) || "";
+                    return (
                     <tr key={item._id} className="table-row approval-table-row">
                       <td className="col-business">
                         <div className="business-info">
                           <div className={`row-avatar ${isPartnerView ? "partner-row-avatar" : "user-row-avatar"}`}>
-                            {item.businessName?.charAt(0).toUpperCase() || "?"}
+                            {(item.businessName || item.firstName || "?").charAt(0).toUpperCase()}
                           </div>
-                          <span className="business-name">{item.businessName}</span>
+                          <span className="business-name">{targetName}</span>
                         </div>
                       </td>
                       <td className="col-type"><span className="type-badge">{item.type || "—"}</span></td>
@@ -2328,15 +2629,29 @@ export default function Dashboard() {
                                 cursor: "pointer",
                                 transition: "all 0.15s"
                               }}
-                              onClick={(e) => { e.stopPropagation(); deactivate(item._id); }}
+                              onClick={(e) => { e.stopPropagation(); deactivate(item._id, isPartnerView ? "partner" : "user", targetName); }}
                               title="Deactivate account in DB"
                             >
                               Deactivate
                             </button>
                           ) : (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b", background: "#f1f5f9", padding: "4px 8px", borderRadius: 6 }}>
-                              Deactivated
-                            </span>
+                            <button
+                              style={{
+                                background: "#f0fdf4",
+                                color: "#15803d",
+                                border: "1px solid #bbf7d0",
+                                padding: "5px 10px",
+                                borderRadius: 6,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "all 0.15s"
+                              }}
+                              onClick={(e) => { e.stopPropagation(); activate(item._id, isPartnerView ? "partner" : "user", targetName); }}
+                              title="Reactivate account in DB"
+                            >
+                              Activate
+                            </button>
                           )}
                           <button
                             style={{
@@ -2350,7 +2665,7 @@ export default function Dashboard() {
                               cursor: "pointer",
                               transition: "all 0.15s"
                             }}
-                            onClick={(e) => { e.stopPropagation(); deleteApproval(item._id); }}
+                            onClick={(e) => { e.stopPropagation(); deleteApproval(item._id, isPartnerView ? "partner" : "user", targetName); }}
                             title="Delete record & account from DB"
                           >
                             Delete
@@ -2358,7 +2673,8 @@ export default function Dashboard() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                  );
+                })
                 ) : (
                   <tr>
                     <td colSpan={isPartnerView ? "6" : "5"} className="no-results">
@@ -2395,6 +2711,8 @@ export default function Dashboard() {
           setSelectedAssistanceRequest(updated);
         }}
       />
+
+      {renderApprovalConfirmModal()}
     </div>
   );
 }
@@ -2410,6 +2728,18 @@ function SectionTitle({ children }) {
 }
 
 function DetailItem({ label, value, icon, isLink }) {
+  const getHref = (val) => {
+    if (!val || typeof val !== "string") return "#";
+    const trimmed = val.trim();
+    if (trimmed.includes("@") && !trimmed.startsWith("http")) {
+      return `mailto:${trimmed}`;
+    }
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  };
+
   return (
     <div className="detail-row">
       <div className="detail-label">
@@ -2417,10 +2747,18 @@ function DetailItem({ label, value, icon, isLink }) {
         {label}
       </div>
       <div className="detail-value">
-        {isLink && value
-          ? <a href={value} target="_blank" rel="noopener noreferrer">{value}</a>
-          : value || <span className="empty-val">—</span>
-        }
+        {isLink && value ? (
+          <a
+            href={getHref(value)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Open ${getHref(value)}`}
+          >
+            {value}
+          </a>
+        ) : (
+          value || <span className="empty-val">—</span>
+        )}
       </div>
     </div>
   );

@@ -173,7 +173,7 @@ const updateStep = async (req, res) => {
     }
 
     const updatedStep = await stepModel.findOneAndUpdate(
-      { _id: req.params.id, status: "active" },
+      { _id: req.params.id, status: { $ne: "delete" } },
       { $set: updateData },
       { new: true }
     );
