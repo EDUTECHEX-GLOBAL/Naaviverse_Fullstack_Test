@@ -9,6 +9,8 @@ import tickMarkValid from "./tickMarkValid.svg";
 import { ApplyWelcomeBonus } from "../../views/inner-pages/pages/services/wallet";
 import { validateEmail } from "../../utils/emailValidator";
 import { SvgCheck } from "../../utils/SvgIcons";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -485,11 +487,15 @@ const NewHomePage = () => {
         } else {
           setLoading(false);
           updateCurrentForm({ wrongOtp: true });
+          const msg = data?.message || "Invalid OTP. Please enter the correct OTP.";
+          toast.error(msg);
         }
       })
-      .catch(() => {
+      .catch((err) => {
         setLoading(false);
         updateCurrentForm({ wrongOtp: true });
+        const errMsg = err.response?.data?.message || "Invalid OTP. Please enter the correct OTP.";
+        toast.error(errMsg);
       });
   };
 
@@ -557,6 +563,7 @@ const NewHomePage = () => {
 
   return (
     <div className='regContainer'>
+      <ToastContainer position="top-right" autoClose={3000} />
       {/* ── LEFT HERO PANEL (Logo above image in both desktop and mobile) ── */}
       <div className='regleftside'>
         <div className="auth-hero-header">
@@ -885,7 +892,7 @@ const NewHomePage = () => {
               <>
                 <div className="otpHelperText">
                   {currentForm.wrongOtp
-                    ? <span className="otpError">Incorrect code. Please check and try again.</span>
+                    ? <span className="otpError">Invalid OTP. Please enter the correct OTP.</span>
                     : "We've sent a verification code to your email. Please enter it below."
                   }
                 </div>

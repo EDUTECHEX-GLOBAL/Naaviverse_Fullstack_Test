@@ -152,7 +152,7 @@ const Dashsidebar = ({ isNotOnMainPage, handleChange, approvalStatus, isProfileI
   })();
 
   const isApprovalLocked = effectiveApprovalStatus !== "approved";
-  const isLocked         = isApprovalLocked || !!isProfileIncomplete;
+  const isLocked         = isApprovalLocked;
   const isOnProfilePage  = location.pathname === "/dashboard/users/profile";
 
   const {
@@ -201,6 +201,9 @@ const Dashsidebar = ({ isNotOnMainPage, handleChange, approvalStatus, isProfileI
 const handleLogout = (e) => {
   if (e) e.stopPropagation();
   triggerLogout(() => {
+    try {
+      window.dispatchEvent(new Event("naavi:logout"));
+    } catch (err) {}
     [
       "authToken", "user", "partner", "userType", "userProfilePic",
       "userProfile", "userName",
@@ -254,7 +257,7 @@ const handleLogout = (e) => {
       )}
 
       {/* Profile-incomplete overlay */}
-      {isProfileIncomplete && !isOnProfilePage && (
+      {isApprovalLocked && isProfileIncomplete && !isOnProfilePage && (
         <div className="user-profile-overlay">
           <div className="user-profile-overlay-card">
             <div className="user-profile-overlay-icon"></div>

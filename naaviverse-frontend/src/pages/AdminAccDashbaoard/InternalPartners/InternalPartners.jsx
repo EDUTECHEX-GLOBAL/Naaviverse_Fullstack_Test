@@ -1549,8 +1549,8 @@ const InternalPartners = () => {
           <div className={`ip-drawer-clean ${getFamilyClass(selectedPartner.id)}`}>
             <div className="d-head">
               <div className="d-user">
-                <div className="avatar-sm">{getInitials(selectedPartner.partnerName)}</div>
-                <div>
+                <div className="avatar-sm" style={{ width: "40px", minWidth: "40px", maxWidth: "40px", height: "40px", minHeight: "40px", maxHeight: "40px", flexShrink: 0, flexGrow: 0 }}>{getInitials(selectedPartner.partnerName)}</div>
+                <div className="d-user-info">
                   <h3>{selectedPartner.partnerName}</h3>
                   <span className="d-sub">{selectedPartner.organizationName}</span>
                 </div>
@@ -1607,8 +1607,18 @@ const InternalPartners = () => {
             </div>
 
             <div className="d-foot">
-              <button className="ip-btn-secondary" onClick={() => handleOpenEditModal(selectedPartner)}>Edit</button>
-              <button className={`ip-btn-primary ${selectedPartner.accountStatus === "active" ? "danger" : ""}`} onClick={(e) => handleToggleStatus(selectedPartner, e)}>
+              <button
+                className="ip-btn-secondary"
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}
+                onClick={() => handleOpenEditModal(selectedPartner)}
+              >
+                Edit
+              </button>
+              <button
+                className={`ip-btn-primary ${selectedPartner.accountStatus === "active" ? "danger" : ""}`}
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}
+                onClick={(e) => handleToggleStatus(selectedPartner, e)}
+              >
                 {selectedPartner.accountStatus === "active" ? "Deactivate" : "Activate"}
               </button>
             </div>

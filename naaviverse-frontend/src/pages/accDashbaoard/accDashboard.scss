@@ -4177,6 +4177,24 @@ body:has(.step-popup-overlay) {
   }
 }
 
+// ============================================
+// TABLET & IPAD PRO 13 — Fix for modal extra space
+// ============================================
+@media only screen and (min-width: 769px) and (max-width: 1032px),
+       only screen and (min-width: 769px) and (max-width: 1376px) and (orientation: portrait),
+       only screen and (min-width: 1025px) and (max-width: 1376px) and (hover: none) and (pointer: coarse) {
+  .acc-popular {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+
+    .acc-step-box:last-child {
+      margin-bottom: 0 !important;
+    }
+  }
+}
+
 // ── Responsive Partner Profile View ──
 .profile-details-card {
   background: #ffffff;

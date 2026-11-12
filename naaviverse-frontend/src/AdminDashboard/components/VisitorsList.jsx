@@ -24,8 +24,23 @@ const { Option } = Select;
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 // Fallback used whenever a value isn't present on the visitor/contact record
-const EMPTY = '—';
-const val = (v) => (v === undefined || v === null || v === '' ? EMPTY : v);
+const EMPTY = 'Unknown';
+const val = (v) => {
+  if (v === undefined || v === null) return EMPTY;
+  const str = String(v).trim();
+  if (
+    str === '' ||
+    str === '―' ||
+    str === '-' ||
+    str.toLowerCase() === 'local' ||
+    str.toLowerCase() === 'localhost' ||
+    str.toLowerCase() === 'null' ||
+    str.toLowerCase() === 'undefined'
+  ) {
+    return EMPTY;
+  }
+  return str;
+};
 
 const VisitorsList = () => {
   const [visitors, setVisitors] = useState([]);
@@ -113,17 +128,10 @@ const VisitorsList = () => {
   const indexOfFirst = indexOfLast - visitorsPerPage;
   const currentVisitors = filteredVisitors.slice(indexOfFirst, indexOfLast);
 
-  // Detect localhost/local visitors so we never show two separate
-  // "location" style names (e.g. "localhost" + "Local") in one row.
-  const isLocalVisitor = (v) =>
-    v.ip === '127.0.0.1' || v.ip === '::1' ||
-    v.city?.toLowerCase() === 'localhost' ||
-    v.country?.toLowerCase() === 'local';
-
-  const getCity = (v) => (isLocalVisitor(v) ? 'Local' : val(v.city));
-  const getRegion = (v) => (isLocalVisitor(v) ? EMPTY : val(v.region));
-  const getPostal = (v) => (isLocalVisitor(v) ? EMPTY : val(v.postalCode));
-  const getCountry = (v) => (isLocalVisitor(v) ? EMPTY : val(v.country));
+  const getCity = (v) => val(v.city);
+  const getRegion = (v) => val(v.region);
+  const getPostal = (v) => val(v.postalCode);
+  const getCountry = (v) => val(v.country);
 
   const exportData = async () => {
     if (isExporting) return;

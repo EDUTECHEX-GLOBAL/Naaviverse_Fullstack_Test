@@ -116,18 +116,38 @@ const PathComponent = () => {
   };
 
   const handleSelectCreatedPath = async (createdPathId, pathName) => {
-    const email = user?.email;
-    if (!email || !createdPathId) return;
+    const resolvedEmail =
+      user?.email ||
+      user?.user?.email ||
+      userProfile?.email ||
+      localStorage.getItem("loginEmail") ||
+      "";
+    if (!resolvedEmail || !createdPathId) return;
     try {
-      localStorage.setItem("selectedPathId", createdPathId);
-      localStorage.setItem("selectedPathOwner", email);
+      await axios.post(`${BASE_URL}/api/userpaths/selectpath`, {
+        email: resolvedEmail,
+        pathId: createdPathId,
+      });
+      localStorage.setItem("selectedPathId", String(createdPathId));
+      localStorage.setItem("selectedPathOwner", resolvedEmail);
       localStorage.setItem("selectedPathName", pathName || "Custom Path");
-      window.dispatchEvent(new Event("naavi:path-selected"));
       localStorage.removeItem("selectedStepId");
       localStorage.removeItem("selectedStepNumber");
-      await axios.post(`${BASE_URL}/api/userpaths/selectpath`, { email, pathId: createdPathId });
+      localStorage.removeItem("selectedPathCountry");
+      localStorage.removeItem("selectedPathUniversity");
+      localStorage.removeItem("selectedPathPathway");
+      localStorage.removeItem("selectedPathCourse");
+      localStorage.removeItem("selectedPathCountryForId");
+      localStorage.removeItem("selectedPathSteps");
+      window.dispatchEvent(new Event("naavi:path-selected"));
+      window.dispatchEvent(new Event("storage"));
     } catch (err) {
       console.error("Select created path error:", err.response?.data || err.message);
+      localStorage.setItem("selectedPathId", String(createdPathId));
+      localStorage.setItem("selectedPathOwner", resolvedEmail);
+      localStorage.setItem("selectedPathName", pathName || "Custom Path");
+      window.dispatchEvent(new Event("naavi:path-selected"));
+      window.dispatchEvent(new Event("storage"));
     } finally {
       setRequestModalOpen(false);
       setsideNav("My Journey");
@@ -259,15 +279,34 @@ const PathComponent = () => {
     setModalStep("explore");
     setStepsLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/api/steps/get`, {
-        params: { path_id: modalPath._id },
+      // 1. Fetch via canonical /api/userpaths/steps so step count and ordering match My Journey & UserTopHeader
+      const res = await axios.get(`${BASE_URL}/api/userpaths/steps`, {
+        params: { pathId: modalPath._id },
       });
-      const sorted = (res?.data?.data || []).sort(
-        (a, b) => (a.step_order || 0) - (b.step_order || 0)
-      );
+      let stepsList = res?.data?.data?.steps;
+      if (!Array.isArray(stepsList) || stepsList.length === 0) {
+        // Fallback to /api/steps/get
+        const fallbackRes = await axios.get(`${BASE_URL}/api/steps/get`, {
+          params: { path_id: modalPath._id },
+        });
+        stepsList = fallbackRes?.data?.data || [];
+      }
+      const sorted = (stepsList || [])
+        .filter((s) => s.status === "active")
+        .sort((a, b) => (a.step_order || 0) - (b.step_order || 0));
       setPathSteps(sorted);
     } catch {
-      setPathSteps([]);
+      try {
+        const fallbackRes = await axios.get(`${BASE_URL}/api/steps/get`, {
+          params: { path_id: modalPath._id },
+        });
+        const sorted = (fallbackRes?.data?.data || [])
+          .filter((s) => s.status === "active")
+          .sort((a, b) => (a.step_order || 0) - (b.step_order || 0));
+        setPathSteps(sorted);
+      } catch {
+        setPathSteps([]);
+      }
     } finally {
       setStepsLoading(false);
     }
@@ -275,46 +314,113 @@ const PathComponent = () => {
 
   // ── Confirm selection ─────────────────────────────────────────
   const handleConfirmSelect = async () => {
-    const email = user?.email;
+    const resolvedEmail =
+      user?.email ||
+      user?.user?.email ||
+      userProfile?.email ||
+      localStorage.getItem("loginEmail") ||
+      "";
     const pathId = modalPath?._id;
-    if (!email || !pathId) return;
+    if (!resolvedEmail || !pathId) {
+      console.warn("Missing email or pathId for selection:", { resolvedEmail, pathId });
+      return;
+    }
 
     try {
       setConfirmLoading(true);
-      localStorage.setItem("selectedPathId", pathId);
-      localStorage.setItem("selectedPathOwner", email); // <SvgArrowLeft size={14} /> store owner
-      localStorage.setItem("selectedPathName", modalPath?.nameOfPath || modalPath?.name || "");
+
+      // 1. Post to backend FIRST so MongoDB saves user.selectedPath before any client events fire
+      await axios.post(`${BASE_URL}/api/userpaths/selectpath`, {
+        email: resolvedEmail,
+        pathId,
+      });
+
+      // 2. Set localStorage with complete path info
+      localStorage.setItem("selectedPathId", String(pathId));
+      localStorage.setItem("selectedPathOwner", resolvedEmail);
+      const pName = modalPath?.nameOfPath || modalPath?.name || "";
+      localStorage.setItem("selectedPathName", pName);
+
+      // Clean up previous path caches
       localStorage.removeItem("selectedPathCountry");
       localStorage.removeItem("selectedPathUniversity");
       localStorage.removeItem("selectedPathPathway");
       localStorage.removeItem("selectedPathCourse");
       localStorage.removeItem("selectedPathCountryForId");
-      if (pathSteps?.length) {
-        localStorage.setItem("selectedPathSteps", `${pathSteps.length} steps`);
-      }
-      window.dispatchEvent(new Event("naavi:path-selected"));
       localStorage.removeItem("selectedStepId");
       localStorage.removeItem("selectedStepNumber");
-      await axios.post(`${BASE_URL}/api/userpaths/selectpath`, { email, pathId });
-    } catch (err) {
-      console.error("Select path error:", err.response?.data || err.message);
-    } finally {
-      setConfirmLoading(false);
+
+      let stepsCount = pathSteps?.length || 0;
+      if (!stepsCount) {
+        try {
+          const stepRes = await axios.get(`${BASE_URL}/api/userpaths/steps`, {
+            params: { pathId },
+          });
+          const list = stepRes?.data?.data?.steps;
+          if (Array.isArray(list) && list.length > 0) {
+            stepsCount = list.filter((s) => s.status === "active").length;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (!stepsCount) {
+        try {
+          const stepRes = await axios.get(`${BASE_URL}/api/steps/get`, {
+            params: { path_id: pathId },
+          });
+          stepsCount = stepRes.data?.data?.length || 0;
+        } catch {
+          stepsCount =
+            modalPath?.StepDetails?.filter(s => s.status === "active")?.length ||
+            modalPath?.the_ids?.length ||
+            modalPath?.total_steps ||
+            0;
+        }
+      }
+      if (stepsCount > 0) {
+        localStorage.setItem("selectedPathSteps", `${stepsCount} Steps`);
+      } else {
+        localStorage.removeItem("selectedPathSteps");
+      }
+
+      // 3. Dispatch events AFTER backend save and localStorage update
+      window.dispatchEvent(new Event("naavi:path-selected"));
+      window.dispatchEvent(new Event("storage"));
+
       logActivity({
         type: "path",
-        title: `Selected path: ${modalPath?.nameOfPath}`,
-        desc: `User enrolled in "${modalPath?.nameOfPath}"`,
+        title: `Selected path: ${pName}`,
+        desc: `User enrolled in "${pName}"`,
         pathId: pathId,
-        pathName: modalPath?.nameOfPath || "",
+        pathName: pName,
         status: "completed",
       });
+
       setModalStep("success");
-      // Auto-navigate after 2.2 s
+
+      // Auto-navigate after 1.8 s to My Journey
       setTimeout(() => {
         closeModal();
         setsideNav("My Journey");
         navigate("/dashboard/users/my-journey");
-      }, 2200);
+      }, 1800);
+    } catch (err) {
+      console.error("Select path error:", err.response?.data || err.message);
+      // Fallback: save to localStorage and dispatch so UI still reflects selection
+      localStorage.setItem("selectedPathId", String(pathId));
+      localStorage.setItem("selectedPathOwner", resolvedEmail);
+      localStorage.setItem("selectedPathName", modalPath?.nameOfPath || modalPath?.name || "");
+      window.dispatchEvent(new Event("naavi:path-selected"));
+      window.dispatchEvent(new Event("storage"));
+      setModalStep("success");
+      setTimeout(() => {
+        closeModal();
+        setsideNav("My Journey");
+        navigate("/dashboard/users/my-journey");
+      }, 1800);
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -443,7 +549,7 @@ const PathComponent = () => {
                         {step.macro_description && (
                           <div className="pfm-step-desc">{step.macro_description}</div>
                         )}
-                        {dur && <div className="pfm-step-dur"><SvgClock size={14} style={{ marginRight: 2, verticalAlign: "middle" }} />{dur}</div>}
+                        {dur && <div className="pfm-step-dur"><SvgClock size={16} style={{ marginRight: 3, verticalAlign: "middle", flexShrink: 0 }} />{dur}</div>}
                       </div>
                     </div>
                   );

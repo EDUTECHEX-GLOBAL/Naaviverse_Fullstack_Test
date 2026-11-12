@@ -1,5 +1,5 @@
 // [check] CORRECTED App.js
-import React, { Fragment, useEffect } from "react";
+import React, { Fragment, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import AOS from "aos";
 import "aos/dist/aos.css";
@@ -55,11 +55,14 @@ import RoutePage from "./pages/RoutePage/routepage";
 import NaaviExclusivePage from "./pages/NaaviExclusive/NaaviExclusivePage";
 import PartnerExclusiveDashboard from "./pages/NaaviExclusive/PartnerExclusiveDashboard";
 import { SvgCheckCircle } from "./utils/SvgIcons";
+import Chatbot from "./components/Chatbot/Chatbot";
+import PartnerChatbot from "./components/Chatbot/PartnerChatbot";
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 function VisitorLogger() {
   const location = useLocation();
+  const loggedRef = useRef(false);
 
   useEffect(() => {
     const isAdminRoute =
@@ -69,9 +72,38 @@ function VisitorLogger() {
 
     if (isAdminRoute) return;
 
-    axios
-      .post(`${BASE_URL}/api/admin-visitors/admin-visitor`)
-      .catch(() => { });
+    // Ignore automated headless browsers (e.g. Puppeteer, Selenium, web crawlers)
+    if (typeof navigator !== "undefined" && navigator.webdriver) return;
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const sessionKey = "naavi_vl_" + todayStr;
+    if (sessionStorage.getItem(sessionKey) || loggedRef.current) return;
+    loggedRef.current = true;
+
+    const logVisit = async () => {
+      let clientIp = null;
+      try {
+        const ipRes = await axios.get("https://api.ipify.org?format=json", {
+          timeout: 3000,
+        });
+        if (ipRes.data && ipRes.data.ip) {
+          clientIp = ipRes.data.ip;
+        }
+      } catch (e) {
+        // Fallback: backend will use proxy headers
+      }
+
+      try {
+        await axios.post(`${BASE_URL}/api/admin-visitors/admin-visitor`, {
+          clientIp,
+        });
+        sessionStorage.setItem(sessionKey, "1");
+      } catch (err) {
+        loggedRef.current = false;
+      }
+    };
+
+    logVisit();
   }, [location.pathname]);
 
   return null;
@@ -94,6 +126,8 @@ function App() {
       <BrowserRouter>
         <VisitorLogger />
         <ScrollToTop />
+        <Chatbot />
+        <PartnerChatbot />
         <Routes>
 
 

@@ -919,3 +919,127 @@ $shadow-card: 0 20px 50px -20px rgba(26, 31, 61, 0.18);
     font-size: 20px;
   }
 }
+
+/* ===== 1536 x 730 LAPTOP & SHORT VIEWPORT OPTIMIZATION ===== */
+@media screen and (min-width: 1200px) and (max-height: 768px), screen and (width: 1536px) and (max-height: 768px) {
+  .regrightside {
+    padding: 12px 32px !important;
+  }
+
+  .reginside,
+  .regFormCard {
+    padding: 6px 0 14px 0 !important;
+    max-width: 380px !important;
+  }
+
+  .brandRow {
+    margin-bottom: 8px !important;
+  }
+
+  .logoimg {
+    height: 28px !important;
+  }
+
+  .reg-welcome-title {
+    font-size: 19px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .reg-welcome-subtitle {
+    font-size: 12px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .toggle-box {
+    margin: 0 0 10px 0 !important;
+    padding: 3px !important;
+  }
+
+  .toggle-each {
+    padding: 6px 0 !important;
+    font-size: 12.5px !important;
+  }
+
+  .input1,
+  .input2 {
+    height: 38px !important;
+    margin-bottom: 6px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+    gap: 8px !important;
+  }
+
+  .input1 input,
+  .input2 input {
+    font-size: 13px !important;
+  }
+
+  .fieldIcon {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  .passreq {
+    font-size: 11.5px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .nextStep {
+    height: 40px !important;
+    font-size: 13.5px !important;
+    margin-top: 2px !important;
+    border-radius: 8px !important;
+  }
+
+  .login-divider {
+    margin: 8px 0 !important;
+  }
+
+  .google-btn {
+    height: 40px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+  }
+
+  .login-link-section {
+    margin-top: 8px !important;
+    font-size: 12px !important;
+  }
+
+  .hero-visual-area .hero-content {
+    padding: 20px 36px !important;
+
+    .hero-badge {
+      padding: 4px 12px !important;
+      font-size: 12px !important;
+      margin-bottom: 10px !important;
+    }
+
+    .hero-title {
+      font-size: 30px !important;
+      line-height: 1.2 !important;
+      margin-bottom: 10px !important;
+    }
+
+    .hero-subtitle {
+      font-size: 13px !important;
+      line-height: 1.5 !important;
+    }
+
+    .hero-features {
+      margin-top: 14px !important;
+      padding-top: 12px !important;
+      gap: 8px !important;
+
+      .feature-item {
+        font-size: 12.5px !important;
+
+        .feature-icon {
+          width: 26px !important;
+          height: 26px !important;
+          font-size: 13px !important;
+        }
+      }
+    }
+  }
+}

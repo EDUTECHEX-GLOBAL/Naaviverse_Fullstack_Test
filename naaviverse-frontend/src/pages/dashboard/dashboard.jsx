@@ -122,8 +122,8 @@ const Dashboard = () => {
 
   // [check] Access control states
   const [approvalStatus, setApprovalStatus] = useState(getCachedApproval);
-  const [isProfileIncomplete, setIsProfileIncomplete] = useState(null); 
-  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [isProfileIncomplete, setIsProfileIncomplete] = useState(false); 
+  const [checkingAccess, setCheckingAccess] = useState(() => getCachedApproval() !== "approved");
 
   const userDetails = JSON.parse(localStorage.getItem("user"));
 
@@ -142,38 +142,38 @@ const Dashboard = () => {
         return;
       }
 
-      // Check profile completion first
-      const profileRes = await axios.get(`${BASE_URL}/api/users/get/${email}`);
-      const data = profileRes.data?.data;
+      // Check profile completion (informative only, doesn't lock approved user flow out)
+      let isComplete = false;
+      try {
+        const profileRes = await axios.get(`${BASE_URL}/api/users/get/${email}`);
+        const data = profileRes.data?.data;
+        isComplete =
+          data?.isProfileCompleted === true ||
+          Boolean(data?.name && data?.username);
+      } catch (_) {}
 
-      const isComplete =
-        data?.isProfileCompleted === true ||
-        (Number(data?.user_level) >= 3 &&
-         data?.name && data?.username && data?.phoneNumber &&
-         data?.school);
-
-      if (!isComplete) {
-        setIsProfileIncomplete(true);
-        setApprovalStatus("");
-        navigate("/dashboard/users/profile", { replace: true });
-        return;
-      }
-
-      setIsProfileIncomplete(false);
+      setIsProfileIncomplete(!isComplete);
 
       // Check live approval status with backend
-      const approvalRes = await axios.get(
-        `${BASE_URL}/api/approvals/status?email=${email}&role=User`
-      );
-      const liveStatus = approvalRes.data?.data?.status;
+      let liveStatus = parsed?.approvalStatus || "approved";
+      try {
+        const approvalRes = await axios.get(
+          `${BASE_URL}/api/approvals/status?email=${email}&role=User`
+        );
+        if (approvalRes.data?.data?.status) {
+          liveStatus = approvalRes.data.data.status;
+        }
+      } catch (e) {
+        console.warn("Could not fetch approval status:", e?.message);
+      }
 
       if (liveStatus !== "approved") {
         const effectiveStatus = liveStatus || "pending";
         setApprovalStatus(effectiveStatus);
         const updated = { ...parsed, approvalStatus: effectiveStatus };
         localStorage.setItem("user", JSON.stringify(updated));
-        // Redirect to profile section only!
         navigate("/dashboard/users/profile", { replace: true });
+        setCheckingAccess(false);
         return;
       }
 
@@ -190,8 +190,8 @@ const Dashboard = () => {
         navigate("/dashboard/users/profile", { replace: true });
       } else {
         setApprovalStatus("approved");
-        setCheckingAccess(false);
       }
+      setCheckingAccess(false);
     }
   };
 
@@ -330,7 +330,7 @@ const Dashboard = () => {
   };
 
   // ── RENDER ───────────────────────────────────────────────────────────────
-  if (approvalStatus !== "approved" || checkingAccess) {
+  if (approvalStatus !== "approved" && checkingAccess) {
     return (
       <div>
         <div className="dashboard-main">

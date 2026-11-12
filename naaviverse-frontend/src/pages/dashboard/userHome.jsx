@@ -176,13 +176,15 @@ export default function UserHome({ initialView = "home" }) {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() => {
     const matched = TABS.find((t) => t.path === window.location.pathname);
-    return matched ? matched.key : "";
+    return matched ? matched.key : "wallet";
   });
 
   useEffect(() => {
     const matched = TABS.find((t) => t.path === location.pathname);
     if (matched) {
       setActiveTab(matched.key);
+    } else {
+      setActiveTab((prev) => prev || "wallet");
     }
   }, [location.pathname]);
 
@@ -553,15 +555,21 @@ export default function UserHome({ initialView = "home" }) {
         let selectedPathId = localStorage.getItem("selectedPathId");
         if (selectedPathId) {
           const belongsToUser = userPaths.some(
-            (p) => p.pathId?.toString() === selectedPathId
+            (p) =>
+              p.pathId?.toString() === selectedPathId ||
+              p.PathDetails?.[0]?._id?.toString() === selectedPathId ||
+              p._id?.toString() === selectedPathId
           );
           if (!belongsToUser) {
-            [
-              "selectedPathId", "selectedPathOwner", "selectedStepId", "selectedStepNumber",
-              "selectedPathName", "selectedPathSteps", "selectedPathCountry",
-              "selectedPathUniversity", "selectedPathPathway", "selectedPathCountryForId"
-            ].forEach((k) => localStorage.removeItem(k));
-            selectedPathId = null;
+            const pathOwner = localStorage.getItem("selectedPathOwner");
+            if (pathOwner && user.email && pathOwner.toLowerCase() !== user.email.toLowerCase()) {
+              [
+                "selectedPathId", "selectedPathOwner", "selectedStepId", "selectedStepNumber",
+                "selectedPathName", "selectedPathSteps", "selectedPathCountry",
+                "selectedPathUniversity", "selectedPathPathway", "selectedPathCountryForId"
+              ].forEach((k) => localStorage.removeItem(k));
+              selectedPathId = null;
+            }
           }
         }
 
@@ -1400,7 +1408,6 @@ export default function UserHome({ initialView = "home" }) {
               className={`uh-quick-tile ${activeTab === t.key ? "active" : ""}`}
               onClick={() => {
                 setActiveTab(t.key);
-                navigate(t.path);
               }}
             >
               <div className="uh-qt-icon"><Icon type={t.icon} size={16} color={activeTab === t.key ? "#2563eb" : "#64748b"} /></div>
@@ -1450,7 +1457,7 @@ export default function UserHome({ initialView = "home" }) {
             ))}
           </div>
           <div className="uh-tab-content">
-            {panels[activeTab]}
+            {panels[activeTab] || panels["wallet"]}
           </div>
         </div>
 

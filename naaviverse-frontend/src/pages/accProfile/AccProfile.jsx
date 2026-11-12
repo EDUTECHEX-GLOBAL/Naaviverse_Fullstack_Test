@@ -688,9 +688,18 @@ const AccProfile = () => {
    */
   const checkIsProfileComplete = (raw, profileRes) => {
     if (!raw) return false;
+    const isApproved =
+      profileRes?.data?.approvalStatus === "approved" ||
+      profileRes?.data?.profileIncomplete === false ||
+      raw?.approvalStatus === "approved" ||
+      raw?.accountStatus === "active" ||
+      raw?.status === true;
+    if (isApproved) return true;
+
     return Boolean(
       (raw.businessName && String(raw.businessName).trim() !== "") ||
       (raw.firstName && String(raw.firstName).trim() !== "") ||
+      (raw.username && String(raw.username).trim() !== "") ||
       raw.logo
     );
   };
@@ -701,7 +710,7 @@ const AccProfile = () => {
    */
   const updateLocalStorage = (status) => {
     const existing = JSON.parse(localStorage.getItem("partner") || "{}");
-    localStorage.setItem("partner", JSON.stringify({ ...existing, approvalStatus: status }));
+    localStorage.setItem("partner", JSON.stringify({ ...existing, approvalStatus: status, status }));
   };
 
   /**
@@ -715,8 +724,16 @@ const AccProfile = () => {
       .get(`${BASE_URL}/api/partner/get?email=${mailId}`)
       .then((profileRes) => {
         const raw = profileRes.data?.data || {};
+        const isApprovedStatus =
+          targetStatus === "approved" ||
+          profileRes.data?.approvalStatus === "approved" ||
+          raw?.approvalStatus === "approved" ||
+          raw?.accountStatus === "active" ||
+          raw?.status === true ||
+          userDetails?.approvalStatus === "approved" ||
+          userDetails?.status === "approved";
 
-        if (!checkIsProfileComplete(raw, profileRes)) {
+        if (!isApprovedStatus && !checkIsProfileComplete(raw, profileRes)) {
           // API returned empty or incomplete data - no complete profile exists yet
           setIsProfileData(false);
           setProfileData({});
@@ -726,36 +743,52 @@ const AccProfile = () => {
           return;
         }
 
+        const effectiveStatus = isApprovedStatus ? "approved" : targetStatus;
         const normalized = {
           ...raw,
-          type: raw.type || raw.partnerType || raw.businessType || "",
+          businessName: raw.businessName || raw.username || userDetails?.businessName || userDetails?.username || "Partner",
+          firstName: raw.firstName || raw.username || userDetails?.firstName || userDetails?.username || "Partner",
+          type: raw.type || raw.partnerType || raw.businessType || "Distributor",
         };
         setIsProfileData(true);
         setProfileData(normalized);
         setprofileSpecalities(raw.specialities || []);
         setCreateBrandProfile(false);
-        setAccStatus(targetStatus);
+        setAccStatus(effectiveStatus);
 
         // Always sync to localStorage for ALL statuses so the sidebar shows
         // the business name correctly and approvalStatus survives logout/re-login
         const existing = JSON.parse(localStorage.getItem("partner") || "{}");
         localStorage.setItem("partner", JSON.stringify({
           ...existing,
-          approvalStatus: targetStatus,
-          firstName: raw.firstName || existing.firstName,
-          lastName: raw.lastName || existing.lastName,
-          businessName: raw.businessName || existing.businessName,
+          approvalStatus: effectiveStatus,
+          status: effectiveStatus,
+          accountStatus: effectiveStatus === "approved" ? "active" : existing.accountStatus,
+          firstName: normalized.firstName,
+          lastName: raw.lastName || existing.lastName || "",
+          businessName: normalized.businessName,
         }));
 
         setIsLoadingProfile(false);
       })
       .catch((err) => {
         console.error("Error fetching profile:", err);
-        // Network error - show empty state
-        setIsProfileData(false);
-        setProfileData({});
-        setAccStatus("");
-        setCreateBrandProfile(false);
+        if (targetStatus === "approved") {
+          const existing = JSON.parse(localStorage.getItem("partner") || "{}");
+          setProfileData({
+            businessName: existing.businessName || existing.username || "Partner",
+            firstName: existing.firstName || existing.username || "Partner",
+            type: existing.partnerType || "Distributor",
+          });
+          setIsProfileData(true);
+          setAccStatus("approved");
+          setCreateBrandProfile(false);
+        } else {
+          setIsProfileData(false);
+          setProfileData({});
+          setAccStatus("");
+          setCreateBrandProfile(false);
+        }
         setIsLoadingProfile(false);
       });
   };
@@ -768,7 +801,7 @@ const AccProfile = () => {
   const loadApprovalThenProfile = (mailId) => {
     setIsLoadingProfile(true);
     axios
-      .get(`${BASE_URL}/api/approvals/status?email=${mailId}`)
+      .get(`${BASE_URL}/api/approvals/status?email=${mailId}&role=Partner`)
       .then((approvalRes) => {
         const liveStatus = approvalRes.data?.data?.status;
         // Grab any rejection reason the admin may have left
@@ -790,7 +823,11 @@ const AccProfile = () => {
             .get(`${BASE_URL}/api/partner/get?email=${mailId}`)
             .then((profileRes) => {
               const raw = profileRes.data?.data || {};
-              if (checkIsProfileComplete(raw, profileRes)) {
+              if (profileRes.data?.approvalStatus === "approved" || raw.accountStatus === "active" || raw.status === true) {
+                updateLocalStorage("approved");
+                setCreateBrandProfile(false);
+                fetchAndShowProfile(mailId, "approved");
+              } else if (checkIsProfileComplete(raw, profileRes)) {
                 updateLocalStorage("pending");
                 setCreateBrandProfile(false);
                 fetchAndShowProfile(mailId, "pending");
@@ -808,27 +845,27 @@ const AccProfile = () => {
               fetchAndShowProfile(mailId, "pending");
             });
         } else {
-          // No approval record yet — check whether partner has a completed profile
+          // No approval record yet — check whether partner has an approved/active status directly in Partner collection
           axios
             .get(`${BASE_URL}/api/partner/get?email=${mailId}`)
             .then((profileRes) => {
               const raw = profileRes.data?.data || {};
-              if (checkIsProfileComplete(raw, profileRes)) {
+              const isApproved =
+                profileRes.data?.approvalStatus === "approved" ||
+                raw.accountStatus === "active" ||
+                raw.status === true ||
+                userDetails?.accountStatus === "active" ||
+                userDetails?.approvalStatus === "approved" ||
+                userDetails?.status === "approved";
+
+              if (isApproved) {
+                console.log("Partner active in DB -> treating as approved");
+                updateLocalStorage("approved");
+                fetchAndShowProfile(mailId, "approved");
+              } else if (checkIsProfileComplete(raw, profileRes)) {
                 console.log("Profile found but no approval record -> pending");
-                const normalized = { ...raw, type: raw.type || raw.partnerType || raw.businessType || "" };
-                setIsProfileData(true);
-                setProfileData(normalized);
-                setprofileSpecalities(raw.specialities || []);
-                setCreateBrandProfile(false);
-                setAccStatus("pending");
-                const existingLS = JSON.parse(localStorage.getItem("partner") || "{}");
-                localStorage.setItem("partner", JSON.stringify({
-                  ...existingLS,
-                  approvalStatus: "pending",
-                  firstName: raw.firstName || existingLS.firstName,
-                  lastName: raw.lastName || existingLS.lastName,
-                  businessName: raw.businessName || existingLS.businessName,
-                }));
+                updateLocalStorage("pending");
+                fetchAndShowProfile(mailId, "pending");
               } else {
                 setIsProfileData(false);
                 setProfileData({});
@@ -853,15 +890,19 @@ const AccProfile = () => {
           .get(`${BASE_URL}/api/partner/get?email=${mailId}`)
           .then((profileRes) => {
             const raw = profileRes.data?.data || {};
-            if (checkIsProfileComplete(raw, profileRes)) {
-              const normalized = { ...raw, type: raw.type || raw.partnerType || raw.businessType || "" };
-              setIsProfileData(true);
-              setProfileData(normalized);
-              setprofileSpecalities(raw.specialities || []);
-              setCreateBrandProfile(false);
-              const existingLS = JSON.parse(localStorage.getItem("partner") || "{}");
-              const fallbackStatus = existingLS.approvalStatus || "approved";
-              setAccStatus(fallbackStatus);
+            const existingLS = JSON.parse(localStorage.getItem("partner") || "{}");
+            const isApproved =
+              profileRes.data?.approvalStatus === "approved" ||
+              raw.accountStatus === "active" ||
+              raw.status === true ||
+              existingLS.approvalStatus === "approved" ||
+              existingLS.status === "approved";
+
+            if (isApproved) {
+              fetchAndShowProfile(mailId, "approved");
+            } else if (checkIsProfileComplete(raw, profileRes)) {
+              const fallbackStatus = existingLS.approvalStatus || "pending";
+              fetchAndShowProfile(mailId, fallbackStatus);
             } else {
               setIsProfileData(false);
               setProfileData({});
@@ -891,8 +932,12 @@ const AccProfile = () => {
     if (!mailId) return;
 
     const isInternal = userDetails?.creationSource === "admin_created";
+    const isAlreadyApproved =
+      userDetails?.approvalStatus === "approved" ||
+      userDetails?.status === "approved" ||
+      userDetails?.accountStatus === "active";
 
-    if (isInternal) {
+    if (isInternal || isAlreadyApproved) {
       fetchAndShowProfile(mailId, "approved");
     } else {
       // External self-registered partner — check live approval pipeline
@@ -1583,7 +1628,7 @@ const AccProfile = () => {
                 </div>
 
                 /* ── APPROVED: show full profile ── */
-              ) : isProfileData && accStatus === "approved" ? (
+              ) : (isProfileData || accStatus === "approved") && accStatus === "approved" ? (
                 <div className="profile-modern-container" style={{
                   maxWidth: "100%", width: "100%", padding: "20px 28px",
                   boxSizing: "border-box", overflowY: "auto", flex: 1, minHeight: 0,

@@ -13,24 +13,31 @@ const mongoose      = require('mongoose');
 // ADD / SELECT A PATH
 // ─────────────────────────────────────────────────────────────────────────────
 const addUserPath = async (req, res) => {
+    const cleanEmail = (req.body.email || "").trim();
+    const emailRegex = new RegExp("^" + cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "$", "i");
+    const pathObjId = mongoose.Types.ObjectId.isValid(req.body.pathId) ? new mongoose.Types.ObjectId(req.body.pathId) : req.body.pathId;
 
-    // ── Block exact duplicate only ────────────────────────────────────────
-    const duplicateCheck = await userPathModel.findOne({
-        email:  req.body.email,
-        pathId: req.body.pathId,
-        status: "active",
+    // ── Check if already active ───────────────────────────────────────────
+    let existingUserPath = await userPathModel.findOne({
+        email:  emailRegex,
+        pathId: pathObjId,
     });
 
-    if (duplicateCheck) {
+    if (existingUserPath) {
+        existingUserPath.status = "active";
+        existingUserPath.updatedAt = new Date();
+        await existingUserPath.save();
+        await userModel.findOneAndUpdate({ email: emailRegex }, { selectedPath: req.body.pathId });
         return res.json({
-            status:  false,
-            message: "You have already selected this path",
+            status:  true,
+            message: "Path selected successfully",
+            data:    existingUserPath,
         });
     }
 
     // ── Verify path exists and is active ─────────────────────────────────
     const existingPath = await pathModel.findOne({
-        _id:    req.body.pathId,
+        _id:    pathObjId,
         status: "active",
     });
 
@@ -43,12 +50,13 @@ const addUserPath = async (req, res) => {
 
     // ── Create a new userPath doc (allows multiple active paths) ──────────
     const path = await userPathModel.create({
-        email:          req.body.email,
-        pathId:         req.body.pathId,
+        email:          cleanEmail.toLowerCase(),
+        pathId:         pathObjId,
         status:         "active",
         completedSteps: [],
         currentStep:    "",
     });
+    await userModel.findOneAndUpdate({ email: emailRegex }, { selectedPath: req.body.pathId });
 
     if (!path) {
         return res.json({
@@ -75,7 +83,10 @@ const getUserPath = async (req, res) => {
     } else {
         filter.status = "active";
     }
-    if (req.query.email) filter.email = req.query.email;
+    if (req.query.email) {
+        const cleanEmail = req.query.email.trim();
+        filter.email = new RegExp("^" + cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "$", "i");
+    }
 
     userPathModel.aggregate([
         { $match: filter },
@@ -254,7 +265,10 @@ const completeStep = async (req, res) => {
     };
 
     // Update the specific path doc for this user
-    const filter = { email: req.body.email, pathId: req.body.pathId, status: "active" };
+    const cleanEmail = (req.body.email || "").trim();
+    const emailRegex = new RegExp("^" + cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "$", "i");
+    const pathObjId = mongoose.Types.ObjectId.isValid(req.body.pathId) ? new mongoose.Types.ObjectId(req.body.pathId) : req.body.pathId;
+    const filter = { email: emailRegex, pathId: pathObjId, status: "active" };
     const updated = await userPathModel.findOneAndUpdate(filter, updateData, { new: true });
 
     if (!updated) {

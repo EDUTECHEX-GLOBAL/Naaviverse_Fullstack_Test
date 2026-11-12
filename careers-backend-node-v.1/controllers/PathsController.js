@@ -703,8 +703,8 @@ const getPath = async (req, res) => {
           from: "career_steps",
           let: { stepIds: "$the_ids.step_id" },
           pipeline: [
-            { $match: { $expr: { $and: [{ $in: ["$_id", "$$stepIds"] }, { $ne: ["$status", "delete"] }] } } },
-            { $sort: { createdAt: 1 } }
+            { $match: { $expr: { $and: [{ $in: ["$_id", "$$stepIds"] }, { $eq: ["$status", "active"] }] } } },
+            { $sort: { step_order: 1, createdAt: 1 } }
           ],
           as: "StepDetails"
         }
@@ -914,8 +914,8 @@ const getPathById = async (req, res) => {
           from: "career_steps",
           let: { stepIds: "$the_ids.step_id" },
           pipeline: [
-            { $match: { $expr: { $and: [{ $in: ["$_id", "$$stepIds"] }, { $ne: ["$status", "delete"] }] } } },
-            { $sort: { createdAt: 1 } }
+            { $match: { $expr: { $and: [{ $in: ["$_id", "$$stepIds"] }, { $eq: ["$status", "active"] }] } } },
+            { $sort: { step_order: 1, createdAt: 1 } }
           ],
           as: "StepDetails",
         },

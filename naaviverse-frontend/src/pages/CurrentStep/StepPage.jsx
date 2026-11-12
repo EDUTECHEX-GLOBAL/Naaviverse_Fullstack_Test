@@ -287,7 +287,9 @@ const StepPage = ({ productDataArray, selectedPathId, showSelectedPath, selected
                     <div className="macro-text">Macro View:</div>
                     <div className="macro-content">
                       <div className="step-text">
-                        {currentStepData?.name ? currentStepData?.name : currentStepPageData?.name}
+                        {(currentStepData?.macro_name || currentStepPageData?.macro_name)
+                          ? (currentStepData?.macro_name || currentStepPageData?.macro_name).replace(/^step\s*\d+\s*:\s*/i, "")
+                          : (currentStepData?.name ? currentStepData.name.replace(/^step\s*\d+\s*:\s*/i, "") : (currentStepPageData?.name ? currentStepPageData.name.replace(/^step\s*\d+\s*:\s*/i, "") : "Overview"))}
                       </div>
                       <div className="macro-text-div">
                         {currentStepData?.description ? currentStepData?.description : currentStepPageData?.description}

@@ -57,6 +57,9 @@ const PurchaseSuccess = () => {
                 maxWidth: 480,
                 width: '90%',
                 textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
                 boxShadow: '0 24px 64px rgba(0,0,0,0.5)'
             }}>
                 <div style={{
@@ -82,7 +85,8 @@ const PurchaseSuccess = () => {
                     <div style={{
                         background: 'rgba(255,255,255,0.04)',
                         borderRadius: 10, padding: '12px 16px',
-                        marginBottom: 24, fontSize: '0.82rem', color: '#8b9abf'
+                        marginBottom: 24, fontSize: '0.82rem', color: '#8b9abf',
+                        width: '100%', boxSizing: 'border-box'
                     }}>
                         Order ID: <strong style={{ color: '#6366f1' }}>{orderId}</strong>
                     </div>
@@ -92,19 +96,31 @@ const PurchaseSuccess = () => {
                     Redirecting to Marketplace in <strong style={{ color: '#6366f1' }}>{countdown}s</strong>...
                 </p>
 
-                <button
-                    onClick={handleGoToMarketplace}
-                    style={{
-                        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                        border: 'none', borderRadius: 10, color: '#fff',
-                        cursor: 'pointer', fontFamily: 'inherit',
-                        fontSize: '0.9rem', fontWeight: 600,
-                        padding: '12px 28px',
-                        boxShadow: '0 4px 16px rgba(99,102,241,0.35)'
-                    }}
-                >
-                    Go to Marketplace
-                </button>
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    width: '100%'
+                }}>
+                    <button
+                        onClick={handleGoToMarketplace}
+                        style={{
+                            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                            border: 'none', borderRadius: 10, color: '#fff',
+                            cursor: 'pointer', fontFamily: 'inherit',
+                            fontSize: '0.9rem', fontWeight: 600,
+                            padding: '12px 28px',
+                            boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto',
+                            textAlign: 'center'
+                        }}
+                    >
+                        Go to Marketplace
+                    </button>
+                </div>
             </div>
         </div>
     );

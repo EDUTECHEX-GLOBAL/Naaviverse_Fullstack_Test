@@ -486,14 +486,19 @@ $sidebar-width: 240px;
 .pfm-step-dur {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 6px;
-  font-size: 0.8rem;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 10px;
+  font-size: 0.95rem;
   font-weight: 600;
   color: $brand;
   background: $brand-soft;
-  border-radius: 8px;
-  padding: 5px 12px;
+  border: 1px solid rgba(108, 92, 231, 0.16);
+  border-radius: 10px;
+  padding: 8px 20px;
+  min-height: 36px;
+  letter-spacing: 0.2px;
+  box-shadow: 0 1px 4px rgba(108, 92, 231, 0.08);
 
   @media (max-width: 1024px) {
     text-align: left;

@@ -94,68 +94,84 @@ const JourneyPage = () => {
   const [journeyPageData,  setJourneyPageData]  = useState(null);
   const [completedStepIds, setCompletedStepIds] = useState(new Set());
 
-  // Read user email once — same pattern as CurrentStep
-  const userDetails = (() => {
-    try { return JSON.parse(localStorage.getItem("user")); }
-    catch { return null; }
+  // Read user email once — robust fallback across all auth formats
+  const userEmail = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("user") || "null");
+      const p = JSON.parse(localStorage.getItem("userProfile") || "null");
+      return u?.user?.email || u?.email || p?.email || localStorage.getItem("loginEmail") || null;
+    } catch {
+      return localStorage.getItem("loginEmail") || null;
+    }
   })();
-  const userEmail = userDetails?.user?.email || userDetails?.email || null;
 
-useEffect(() => {
-  const init = async () => {
-    if (!userEmail) {
-      setLoading(false);
-      return;
-    }
-
-    let pathId = localStorage.getItem("selectedPathId");
-    const pathOwner = localStorage.getItem("selectedPathOwner");
-
-    // ── If stored path belongs to a different user, clear it ──
-    if (pathId && pathOwner && pathOwner !== userEmail) {
-      localStorage.removeItem("selectedPathId");
-      localStorage.removeItem("selectedPathOwner");
-      localStorage.removeItem("selectedStepId");
-      localStorage.removeItem("selectedStepNumber");
-      pathId = null;
-    }
-
-    // ── If no pathId, try to restore from backend for THIS user ──
-    if (!pathId) {
-      try {
-        const res = await axios.get(`${BASE_URL}/api/userpaths/selected`, {
-          params: { email: userEmail },
-        });
-        if (res.data?.status && res.data?.pathId) {
-          pathId = res.data.pathId;
-          localStorage.setItem("selectedPathId", pathId);
-          localStorage.setItem("selectedPathOwner", userEmail);
-        }
-      } catch (err) {
-        console.error("Failed to restore selectedPathId:", err);
-      }
-    }
-
-    if (!pathId) {
-      setLoading(false);
-      return;
-    }
-
-    fetchJourneyData(pathId);
-  };
-
-  init();
-}, [userEmail]);
-
-  // Re-fetch when CurrentStep fires the completion event (same tab)
   useEffect(() => {
-    const handler = () => {
+    const init = async () => {
+      let pathId = localStorage.getItem("selectedPathId");
+      const pathOwner = localStorage.getItem("selectedPathOwner");
+
+      // ── If stored path belongs to a different user, clear it ──
+      if (pathId && pathOwner && userEmail && pathOwner.toLowerCase() !== userEmail.toLowerCase()) {
+        localStorage.removeItem("selectedPathId");
+        localStorage.removeItem("selectedPathOwner");
+        localStorage.removeItem("selectedStepId");
+        localStorage.removeItem("selectedStepNumber");
+        pathId = null;
+      }
+
+      // ── If no pathId, try to restore from backend for THIS user ──
+      if (!pathId && userEmail) {
+        try {
+          const res = await axios.get(`${BASE_URL}/api/userpaths/selected`, {
+            params: { email: userEmail },
+          });
+          if (res.data?.status && res.data?.pathId) {
+            pathId = res.data.pathId;
+            localStorage.setItem("selectedPathId", pathId);
+            localStorage.setItem("selectedPathOwner", userEmail);
+          }
+        } catch (err) {
+          console.error("Failed to restore selectedPathId:", err);
+        }
+      }
+
+      if (!pathId) {
+        setJourneyPageData(null);
+        setLoading(false);
+        return;
+      }
+
+      fetchJourneyData(pathId);
+    };
+
+    init();
+  }, [userEmail]);
+
+  // Re-fetch when CurrentStep fires completion OR when a new path is selected
+  useEffect(() => {
+    const handleStepCompleted = () => {
       const pathId = localStorage.getItem("selectedPathId");
       if (pathId) fetchJourneyData(pathId);
     };
-    window.addEventListener("naavi:step-completed", handler);
-    return () => window.removeEventListener("naavi:step-completed", handler);
-  }, []);
+
+    const handlePathSelected = () => {
+      const pathId = localStorage.getItem("selectedPathId");
+      if (pathId) {
+        setLoading(true);
+        fetchJourneyData(pathId);
+      }
+    };
+
+    window.addEventListener("naavi:step-completed", handleStepCompleted);
+    window.addEventListener("naavi:path-selected", handlePathSelected);
+    window.addEventListener("storage", handlePathSelected);
+
+    return () => {
+      window.removeEventListener("naavi:step-completed", handleStepCompleted);
+      window.removeEventListener("naavi:path-selected", handlePathSelected);
+      window.removeEventListener("storage", handlePathSelected);
+    };
+  }, [userEmail]);
 
   const fetchJourneyData = async (pathId) => {
     try {
@@ -172,7 +188,9 @@ useEffect(() => {
 
       const data = stepsRes.data.data;
       if (data?.steps) {
-        data.steps = data.steps.sort((a, b) => (a.step_order || 0) - (b.step_order || 0));
+        data.steps = data.steps
+          .filter((s) => s.status === "active" || !s.status)
+          .sort((a, b) => (a.step_order || 0) - (b.step_order || 0));
       }
       setJourneyPageData(data);
 

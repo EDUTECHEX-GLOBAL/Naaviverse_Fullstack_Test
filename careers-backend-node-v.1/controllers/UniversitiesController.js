@@ -154,7 +154,7 @@ const fetchUniversities = async (req, res) => {
    3️  AI PROGRAM GENERATOR — GROQ VERSION
 =========================== */
 const Groq = require("groq-sdk");
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || process.env.GROQ_USER_FLOW_BOT_KEY || process.env.GROQ_PARTNER_FLOW_BOT_KEY });
 
 async function generateProgram(universityName) {
   const prompt = `

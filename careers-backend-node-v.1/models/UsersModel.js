@@ -31,6 +31,7 @@ const userSchema = new mongoose.Schema({
   OTPAttempts: { type: Number, default: 0 },
   isBlocked: { type: Boolean, default: false },
   OTPverified: { type: Boolean, default: false },
+  resetOtpVerified: { type: Boolean, default: false },
   blockUntil: { type: Date },
   linkedin: { type: String },
   user_level: { type: Number, default: 0 },

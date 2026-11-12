@@ -121,7 +121,28 @@ const getSteps = async (req, res) => {
     const pathId = req.query.path_id || req.body.path_id;
 
     if (pathId) {
-      filter.path_id = new mongoose.Types.ObjectId(pathId);
+      const pathObjId = mongoose.Types.ObjectId.isValid(pathId) ? new mongoose.Types.ObjectId(pathId) : null;
+      let stepIds = [];
+      try {
+        const path = await pathModel.findById(pathObjId || pathId).lean();
+        if (path && Array.isArray(path.the_ids)) {
+          stepIds = path.the_ids
+            .map((s) => s?.step_id)
+            .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
+            .map((id) => new mongoose.Types.ObjectId(id));
+        }
+      } catch (e) {
+        console.warn("Could not lookup path the_ids in getSteps:", e.message);
+      }
+
+      const orMatchers = [];
+      if (pathObjId) orMatchers.push({ path_id: pathObjId });
+      orMatchers.push({ path_id: String(pathId) });
+      if (stepIds.length > 0) {
+        orMatchers.push({ _id: { $in: stepIds } });
+      }
+
+      filter.$or = orMatchers;
     }
 
     if (req.query.status) {
@@ -133,7 +154,7 @@ const getSteps = async (req, res) => {
     const steps = await stepModel
       .find(filter)
       .populate({ path: "services", model: "naavi_services" })
-      .sort({ createdAt: -1 });
+      .sort({ step_order: 1, createdAt: 1 });
 
     return res.json({ status: true, total: steps.length, data: steps });
   } catch (error) {

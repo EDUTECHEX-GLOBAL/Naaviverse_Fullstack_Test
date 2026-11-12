@@ -3,7 +3,7 @@ const VaultTransaction = require("../models/VaultTransactionModel");
 const Payment = require("../models/PaymentModel");
 
 const LAYER_COST_FREEMIUM = { micro: 2, nano: 4 };
-const LAYER_COST_SUBSCRIBER = { micro: 5, nano: 10 };
+const LAYER_COST_SUBSCRIBER = { micro: 2, nano: 4 };
 const PRODUCT_ID = "naavi-platform";
 
 const computeEndDate = (billingMethod) => {

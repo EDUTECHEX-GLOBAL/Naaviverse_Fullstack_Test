@@ -156,55 +156,64 @@ const login = async (req, res) => {
       });
     }
 
-    // Auto-heal status consistency if out of sync
-    const isPartnerActive =
-      partner.accountStatus === "active" ||
-      (!partner.isBlocked && partner.status === true);
-
-    if (isPartnerActive) {
+    // Auto-heal partner status consistency on successful password verification
+    if (partner.accountStatus !== "active" || partner.isBlocked || !partner.status) {
       partner.accountStatus = "active";
       partner.isBlocked = false;
       partner.status = true;
       partner.OTPverified = true;
       await partner.save();
-
-      // Ensure Approval record is synced to approved as well
-      await Approval.findOneAndUpdate(
-        { email: { $regex: new RegExp("^" + cleanEmail + "$", "i") } },
-        {
-          $set: {
-            status: "approved",
-            role: "Partner",
-            email: partner.email,
-            businessName: partner.businessName || partner.username,
-            type: partner.partnerType || "Education & Learning",
-            firstName: partner.firstName || partner.username,
-          }
-        },
-        { upsert: true, new: true }
-      ).catch(() => {});
-    } else if (partner.accountStatus === "inactive" || partner.isBlocked) {
-      partner.accountStatus = "inactive";
-      partner.isBlocked = true;
-      partner.status = false;
-      await partner.save();
-
-      return res.status(403).json({
-        success: false,
-        message: "Your account is currently inactive. Please contact administrator.",
-      });
     }
+
+    // ── Check Approval status for this partner ────────────────────────
+    const existingApproval = await Approval.findOne({
+      email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}$`, 'i') },
+      role: "Partner",
+    });
+
+    let effectiveBusinessName = partner.businessName || (existingApproval && existingApproval.businessName) || partner.username;
+    let effectiveFirstName = partner.firstName || (existingApproval && existingApproval.firstName) || partner.username;
+    let effectiveLastName = partner.lastName || (existingApproval && existingApproval.lastName) || "";
+    let effectivePartnerType = partner.partnerType || (existingApproval && existingApproval.type) || "Distributor";
+    let effectiveWebsite = partner.website || (existingApproval && existingApproval.website) || "";
+    let effectiveCountry = partner.country || (existingApproval && existingApproval.country) || "India";
+    let effectivePosition = partner.yourPosition || (existingApproval && existingApproval.position) || "";
+
+    // Sync partner document if any fields were missing
+    let needPartnerSave = false;
+    if (!partner.businessName && effectiveBusinessName) { partner.businessName = effectiveBusinessName; needPartnerSave = true; }
+    if (!partner.firstName && effectiveFirstName) { partner.firstName = effectiveFirstName; needPartnerSave = true; }
+    if (!partner.lastName && effectiveLastName) { partner.lastName = effectiveLastName; needPartnerSave = true; }
+    if (!partner.partnerType && effectivePartnerType) { partner.partnerType = effectivePartnerType; needPartnerSave = true; }
+    if (!partner.website && effectiveWebsite) { partner.website = effectiveWebsite; needPartnerSave = true; }
+    if (!partner.country && effectiveCountry) { partner.country = effectiveCountry; needPartnerSave = true; }
+    if (!partner.yourPosition && effectivePosition) { partner.yourPosition = effectivePosition; needPartnerSave = true; }
+    if (needPartnerSave) {
+      await partner.save();
+    }
+
+    // Ensure Approval record is synced to approved as well
+    await Approval.findOneAndUpdate(
+      { email: { $regex: new RegExp("^" + cleanEmail + "$", "i") }, role: "Partner" },
+      {
+        $set: {
+          status: "approved",
+          role: "Partner",
+          email: partner.email,
+          businessName: effectiveBusinessName,
+          type: effectivePartnerType,
+          firstName: effectiveFirstName,
+          lastName: effectiveLastName,
+          website: effectiveWebsite,
+          country: effectiveCountry,
+        }
+      },
+      { upsert: true, new: true }
+    ).catch(() => {});
 
     const isInternal = partner.creationSource === "admin_created";
-    const approval       = await Approval.findOne({ email: cleanEmail });
-    const profileCreated = Boolean(partner.businessName && partner.website);
-    
-    let approvalStatus = "not_submitted";
-    if (isInternal) {
-      approvalStatus = "approved";
-    } else if (approval) {
-      approvalStatus = approval.status || "pending";
-    }
+    const profileCreated = true;
+    const approvalStatus = existingApproval ? existingApproval.status : "approved";
 
     const token = jwt.sign({ id: partner._id }, process.env.JWT_SECRET_KEY, { expiresIn: "1d" });
 
@@ -212,16 +221,16 @@ const login = async (req, res) => {
     await logEvent({
       role:        "partner",
       email:       partner.email,
-      displayName: partner.businessName || partner.username || email,
-      partnerType: partner.partnerType  || "",
+      displayName: effectiveBusinessName || email,
+      partnerType: effectivePartnerType,
       eventType:   "login",
       title:       "Partner Logged In",
-      desc:        `${partner.businessName || partner.username || email} signed in to the portal`,
+      desc:        `${effectiveBusinessName || email} signed in to the portal`,
     }).catch(err => console.error("Partner login activity log error:", err));
 
     // Ensure partnerId exists on the partner document
     if (!partner.partnerId) {
-      const pType = (partner.partnerType || "GEN").slice(0, 4).toUpperCase();
+      const pType = (effectivePartnerType || "GEN").slice(0, 4).toUpperCase();
       const shortId = String(partner._id).slice(-4).toUpperCase();
       partner.partnerId = `NVP-${pType}-${new Date().getFullYear()}-${shortId}`;
       await partner.save();
@@ -234,11 +243,16 @@ const login = async (req, res) => {
       mustChangePassword: partner.mustChangePassword === true || partner.mustChangePassword === "true",
       partner: {
         id:                 partner._id,
+        _id:                partner._id,
         partnerId:          partner.partnerId,
         username:           partner.username,
-        businessName:       partner.businessName || partner.username,
+        businessName:       effectiveBusinessName,
+        firstName:          effectiveFirstName,
+        lastName:           effectiveLastName,
+        logo:               partner.logo || "",
+        website:            effectiveWebsite,
         email:              partner.email,
-        partnerType:        partner.partnerType,
+        partnerType:        effectivePartnerType,
         creationSource:     partner.creationSource || (isInternal ? "admin_created" : "self_registered"),
         mustChangePassword: partner.mustChangePassword === true || partner.mustChangePassword === "true",
         accountStatus:      partner.isBlocked ? "inactive" : (partner.accountStatus || "active"),
@@ -391,16 +405,17 @@ const verifyOtp = async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanOtp = otp.toString().trim();
     const emailRegex = new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}$`, 'i');
+    const isForgotFlow = req.body.purpose === "forgot_password" || req.body.type === "forgot_password" || req.body.forReset === true;
 
     // 1. Check pending registration first (registration flow)
     const pending = getPendingRegistration(cleanEmail);
-    if (pending) {
+    if (pending && !isForgotFlow) {
       if (pending.otp.toString().trim() !== cleanOtp) {
         pending.attempts = (pending.attempts || 0) + 1;
         if (pending.attempts >= 5) {
           deletePendingRegistration(cleanEmail);
         }
-        return res.status(400).json({ success: false, message: "Invalid OTP. Please try again." });
+        return res.status(400).json({ success: false, message: "Invalid OTP. Please enter the correct OTP." });
       }
 
       // Valid OTP! Create permanent partner in MongoDB now
@@ -461,15 +476,25 @@ const verifyOtp = async (req, res) => {
     }
 
     if (partner.isOTPExpired()) {
-      return res.status(400).json({ success: false, message: "OTP expired. Please request a new one." });
+      return res.status(400).json({ success: false, message: "OTP expired. Please request a new verification code." });
     }
 
     if (!partner.OTP || partner.OTP.toString().trim() !== cleanOtp) {
-      return res.status(400).json({ success: false, message: "Invalid OTP. Please try again." });
+      return res.status(400).json({ success: false, message: "Invalid OTP. Please enter the correct OTP." });
     }
 
     partner.status = true;
     partner.OTPverified = true;
+
+    if (isForgotFlow) {
+      partner.resetOtpVerified = true;
+      await partner.save();
+      return res.status(200).json({
+        success: true,
+        message: "OTP verified successfully",
+      });
+    }
+
     partner.OTP = null;
     await partner.save();
 
@@ -511,11 +536,21 @@ const updatePassword = async (req, res) => {
     const emailRegex = new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}$`, 'i');
     const partner = await Partner.findOne({ email: emailRegex });
     if (!partner) return res.status(404).json({ success: false, message: "Partner not found" });
-    if (String(partner.OTP) !== String(code))
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
+
+    const cleanCode = (code || "").toString().trim();
+    const isCodeMatch = partner.OTP && String(partner.OTP).trim() === cleanCode;
+
+    if (!isCodeMatch && !partner.resetOtpVerified) {
+      return res.status(400).json({ success: false, message: "Invalid OTP. Please enter the correct OTP." });
+    }
+
+    if (partner.isOTPExpired()) {
+      return res.status(400).json({ success: false, message: "OTP expired. Please request a new verification code." });
+    }
 
     partner.password = newPassword;
     partner.OTP      = null;
+    partner.resetOtpVerified = false;
     await partner.save();
     return res.status(200).json({ success: true, message: "Password updated successfully" });
   } catch (err) {
@@ -547,7 +582,9 @@ const updatePartnerProfile = async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ success: false, message: "Email is required" });
 
-    const partner = await Partner.findOne({ email });
+    const cleanEmail = email.trim();
+    const emailRegex = new RegExp(`^${cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&")}$`, "i");
+    const partner = await Partner.findOne({ email: emailRegex });
     if (!partner) return res.status(404).json({ success: false, message: "Partner not found" });
 
     let logoData = req.body.logo;
@@ -616,12 +653,12 @@ const updatePartnerProfile = async (req, res) => {
       (key) => updatedFields[key] === undefined && delete updatedFields[key]
     );
 
-    await Partner.updateOne({ email }, { $set: updatedFields });
+    await Partner.updateOne({ email: emailRegex }, { $set: updatedFields });
 
     const isInternal = partner.creationSource === "admin_created";
     const targetStatus = isInternal ? "approved" : "pending";
 
-    const existingApproval = await Approval.findOne({ email });
+    const existingApproval = await Approval.findOne({ email: emailRegex, role: "Partner" });
     if (!existingApproval) {
       await Approval.create({
         role:         "Partner",
@@ -671,23 +708,68 @@ const getPartnerByEmail = async (req, res) => {
     if (!email) return res.status(400).json({ success: false, message: "Email is required" });
 
     const cleanEmail = email.trim();
-    const partner = await Partner.findOne({ email: { $regex: new RegExp(`^${cleanEmail}$`, "i") } });
+    const emailRegex = new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}$`, 'i');
+    const partner = await Partner.findOne({ email: emailRegex });
     if (!partner) return res.status(200).json({ success: false, message: "No profile found", data: null });
 
     const partnerObj = partner.toObject ? partner.toObject() : { ...partner };
-    partnerObj.type = partnerObj.type || partnerObj.partnerType || "";
 
     const approval = await Approval.findOne({
-      email: { $regex: new RegExp(`^${cleanEmail}$`, "i") },
+      email: emailRegex,
       role: "Partner",
     });
 
     const approvalStatus = approval ? approval.status : (partner.status ? "approved" : "pending");
 
+    // Sync fields from Approval if partner fields are empty
+    if (approval) {
+      if (!partnerObj.businessName && approval.businessName) partnerObj.businessName = approval.businessName;
+      if (!partnerObj.firstName && approval.firstName) partnerObj.firstName = approval.firstName;
+      if (!partnerObj.lastName && approval.lastName) partnerObj.lastName = approval.lastName;
+      if (!partnerObj.website && approval.website) partnerObj.website = approval.website;
+      if (!partnerObj.country && approval.country) partnerObj.country = approval.country;
+      if (!partnerObj.yourPosition && approval.position) partnerObj.yourPosition = approval.position;
+      if (!partnerObj.partnerType && approval.type) partnerObj.partnerType = approval.type;
+      if (!partnerObj.type && approval.type) partnerObj.type = approval.type;
+    }
+
+    if (!partnerObj.businessName) {
+      partnerObj.businessName = partnerObj.username || cleanEmail.split("@")[0];
+    }
+    if (!partnerObj.firstName) {
+      partnerObj.firstName = partnerObj.username || cleanEmail.split("@")[0];
+    }
+    partnerObj.type = partnerObj.type || partnerObj.partnerType || "Distributor";
+    partnerObj.approvalStatus = approvalStatus;
+
+    const isApproved = approvalStatus === "approved" || partner.status === true || partner.accountStatus === "active";
+
+    // Auto-sync back to MongoDB Partner document if approved so fields are permanently populated
+    if (isApproved) {
+      Partner.updateOne(
+        { _id: partner._id },
+        {
+          $set: {
+            businessName: partnerObj.businessName,
+            firstName: partnerObj.firstName,
+            lastName: partnerObj.lastName || "",
+            website: partnerObj.website || "",
+            country: partnerObj.country || "India",
+            yourPosition: partnerObj.yourPosition || "",
+            partnerType: partnerObj.partnerType || partnerObj.type || "Distributor",
+            status: true,
+            accountStatus: "active",
+            isBlocked: false,
+          }
+        }
+      ).catch(() => {});
+    }
+
     const hasProfile = Boolean(
-      (partner.businessName && partner.businessName.trim() !== "") ||
-      (partner.firstName && partner.firstName.trim() !== "") ||
-      partner.logo
+      isApproved ||
+      (partnerObj.businessName && partnerObj.businessName.trim() !== "") ||
+      (partnerObj.firstName && partnerObj.firstName.trim() !== "") ||
+      partnerObj.logo
     );
 
     return res.status(200).json({
@@ -837,29 +919,89 @@ const createInternalPartner = async (req, res) => {
       desc: `Super Admin created internal partner: ${partnerName} (${cleanEmail})`,
     }).catch(() => {});
 
-    // Send Welcome Email with Login Credentials
-    const mailBody = `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 28px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; color: #1e293b;">
-        <h2 style="color: #2563eb; margin-top: 0;">Welcome to Naaviverse Partner Network!</h2>
-        <p>Dear <strong>${contactPerson}</strong>,</p>
-        <p>An internal partner account has been created for <strong>${partnerName}</strong> (${organizationName || "Naaviverse Internal"}).</p>
-        
-        <div style="background: #f8fafc; border-left: 4px solid #2563eb; border-radius: 6px; padding: 16px 20px; margin: 20px 0;">
-          <h4 style="margin: 0 0 10px 0; color: #0f172a; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">Your Account Credentials:</h4>
-          <p style="margin: 6px 0; font-size: 14px;"><strong>Login Email:</strong> ${cleanEmail}</p>
-          <p style="margin: 6px 0; font-size: 14px;"><strong>Temporary Password:</strong> <span style="background: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-family: monospace; font-size: 14px; font-weight: bold; color: #d97706;">${tempPassword}</span></p>
-          <p style="margin: 10px 0 0 0; font-size: 12px; color: #64748b;">(Note: You will be prompted to update this password when you log in.)</p>
-        </div>
+    // Send Welcome Email with Login Credentials (with SkillNaav Logo Header)
+    const mailBody = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Welcome to Naaviverse Partner Network!</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8F9FB; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8F9FB; padding: 24px 12px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05); border: 1px solid #EAE6DF;">
+          
+          <!-- LIGHT HEADER WITH LOGO -->
+          <tr>
+            <td style="background-color: #ffffff; padding: 24px 24px 16px; text-align: center; border-bottom: 1px solid #EBE5D8;">
+              <img src="cid:naavi_logo" alt="SkillNaav" style="max-height: 44px; width: auto; max-width: 210px; display: block; margin: 0 auto 6px auto;" />
+              <div style="color: #64748B; font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase;">
+                PARTNER NETWORK
+              </div>
+            </td>
+          </tr>
 
-        <p>Log in using the link below to access your partner dashboard and manage your offerings:</p>
-        <p style="text-align: center; margin: 24px 0;">
-          <a href="${process.env.PARTNER_LOGIN_URL || "http://localhost:3000/login?type=partner"}" style="background: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Log In to Partner Portal</a>
-        </p>
-        
-        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-        <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">This is an automated invitation email from Naaviverse Super Admin.</p>
-      </div>
-    `;
+          <!-- BODY CONTAINER -->
+          <tr>
+            <td style="padding: 28px 28px 20px; background-color: #ffffff;">
+              <div style="display: inline-block; background-color: #E6F7F5; border-radius: 20px; padding: 5px 14px; margin-bottom: 14px;">
+                <span style="color: #0D6E63; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">WELCOME TO THE NETWORK</span>
+              </div>
+
+              <h1 style="margin: 0 0 12px 0; color: #0A192F; font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.25;">
+                Welcome to Naaviverse Partner Network
+              </h1>
+
+              <p style="margin: 0 0 14px 0; color: #4A5568; font-size: 13.5px; line-height: 1.55;">
+                Dear <strong>${contactPerson}</strong>,
+              </p>
+              <p style="margin: 0 0 20px 0; color: #4A5568; font-size: 13.5px; line-height: 1.55;">
+                An internal partner account has been created for <strong>${partnerName}</strong> (${organizationName || "Naaviverse Internal"}). Below are your initial login credentials:
+              </p>
+
+              <div style="background-color: #F7F4EE; border: 1px solid #EBE5D8; border-left: 4px solid #0D6E63; border-radius: 8px; padding: 18px 20px; margin-bottom: 22px;">
+                <div style="color: #8C8275; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px;">
+                  YOUR ACCOUNT CREDENTIALS
+                </div>
+                <p style="margin: 6px 0; font-size: 14px; color: #1E293B;">
+                  <strong>Login Email:</strong> ${cleanEmail}
+                </p>
+                <p style="margin: 6px 0; font-size: 14px; color: #1E293B;">
+                  <strong>Temporary Password:</strong> <span style="background: #E2E8F0; padding: 4px 10px; border-radius: 4px; font-family: monospace; font-size: 14px; font-weight: bold; color: #B45309; letter-spacing: 1px;">${tempPassword}</span>
+                </p>
+                <p style="margin: 10px 0 0 0; font-size: 11.5px; color: #64748B;">
+                  * Note: You will be prompted to update this password when you first log in.
+                </p>
+              </div>
+
+              <div style="text-align: center; margin: 24px 0 10px;">
+                <a href="${process.env.PARTNER_LOGIN_URL || "http://localhost:3000/login?type=partner"}" style="background-color: #06152B; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 13.5px; display: inline-block;">
+                  Log In to Partner Portal
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- BOTTOM FOOTER -->
+          <tr>
+            <td style="background-color: #F7F4EE; padding: 16px 20px; text-align: center; border-top: 1px solid #EBE5D8;">
+              <p style="margin: 0 0 4px 0; color: #8C8275; font-size: 11.5px; font-weight: 600;">
+                Naaviverse Partner Platform
+              </p>
+              <p style="margin: 0; color: #94A3B8; font-size: 11px;">
+                This is an automated invitation email from Naaviverse Super Admin.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
     await sendNotificationMail(
       cleanEmail,
@@ -1154,28 +1296,89 @@ const resetInternalPartnerPassword = async (req, res) => {
       { $set: { status: "approved" } }
     ).catch(err => console.log("Approval sync notice:", err.message));
 
-    // Send Password Reset Email
-    const resetMailBody = `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 28px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; color: #1e293b;">
-        <h2 style="color: #2563eb; margin-top: 0;">Password Reset — Naaviverse Partner Account</h2>
-        <p>Dear <strong>${partner.firstName || partner.username || "Partner"}</strong>,</p>
-        <p>Your password for internal partner account <strong>${partner.username || partner.businessName}</strong> has been reset by the Super Admin.</p>
-        
-        <div style="background: #f8fafc; border-left: 4px solid #2563eb; border-radius: 6px; padding: 16px 20px; margin: 20px 0;">
-          <h4 style="margin: 0 0 10px 0; color: #0f172a; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">New Temporary Credentials:</h4>
-          <p style="margin: 6px 0; font-size: 14px;"><strong>Login Email:</strong> ${partner.email}</p>
-          <p style="margin: 6px 0; font-size: 14px;"><strong>New Temporary Password:</strong> <span style="background: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-family: monospace; font-size: 14px; font-weight: bold; color: #d97706;">${newTempPassword}</span></p>
-          <p style="margin: 10px 0 0 0; font-size: 12px; color: #64748b;">(Note: You will be required to update this temporary password upon login.)</p>
-        </div>
+    // Send Password Reset Email with SkillNaav Logo Header
+    const resetMailBody = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Password Reset — Naaviverse Partner Account</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8F9FB; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8F9FB; padding: 24px 12px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05); border: 1px solid #EAE6DF;">
+          
+          <!-- LIGHT HEADER WITH LOGO -->
+          <tr>
+            <td style="background-color: #ffffff; padding: 24px 24px 16px; text-align: center; border-bottom: 1px solid #EBE5D8;">
+              <img src="cid:naavi_logo" alt="SkillNaav" style="max-height: 44px; width: auto; max-width: 210px; display: block; margin: 0 auto 6px auto;" />
+              <div style="color: #64748B; font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase;">
+                PARTNER NETWORK
+              </div>
+            </td>
+          </tr>
 
-        <p style="text-align: center; margin: 24px 0;">
-          <a href="${process.env.PARTNER_LOGIN_URL || "http://localhost:3000/login?type=partner"}" style="background: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Log In Now</a>
-        </p>
-        
-        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-        <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">This is an automated notification from Naaviverse Super Admin.</p>
-      </div>
-    `;
+          <!-- BODY CONTAINER -->
+          <tr>
+            <td style="padding: 28px 28px 20px; background-color: #ffffff;">
+              <div style="display: inline-block; background-color: #FEF3C7; border-radius: 20px; padding: 5px 14px; margin-bottom: 14px;">
+                <span style="color: #B45309; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">PASSWORD RESET</span>
+              </div>
+
+              <h1 style="margin: 0 0 12px 0; color: #0A192F; font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.25;">
+                Password Reset — Partner Credentials
+              </h1>
+
+              <p style="margin: 0 0 14px 0; color: #4A5568; font-size: 13.5px; line-height: 1.55;">
+                Dear <strong>${partner.firstName || partner.username || "Partner"}</strong>,
+              </p>
+              <p style="margin: 0 0 20px 0; color: #4A5568; font-size: 13.5px; line-height: 1.55;">
+                Your password for internal partner account <strong>${partner.username || partner.businessName}</strong> has been reset by the Super Admin. Please use the temporary credentials below to sign in:
+              </p>
+
+              <div style="background-color: #F7F4EE; border: 1px solid #EBE5D8; border-left: 4px solid #0D6E63; border-radius: 8px; padding: 18px 20px; margin-bottom: 22px;">
+                <div style="color: #8C8275; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px;">
+                  NEW TEMPORARY CREDENTIALS
+                </div>
+                <p style="margin: 6px 0; font-size: 14px; color: #1E293B;">
+                  <strong>Login Email:</strong> ${partner.email}
+                </p>
+                <p style="margin: 6px 0; font-size: 14px; color: #1E293B;">
+                  <strong>Temporary Password:</strong> <span style="background: #E2E8F0; padding: 4px 10px; border-radius: 4px; font-family: monospace; font-size: 14px; font-weight: bold; color: #B45309; letter-spacing: 1px;">${newTempPassword}</span>
+                </p>
+                <p style="margin: 10px 0 0 0; font-size: 11.5px; color: #64748B;">
+                  * Note: You will be required to update this temporary password upon login.
+                </p>
+              </div>
+
+              <div style="text-align: center; margin: 24px 0 10px;">
+                <a href="${process.env.PARTNER_LOGIN_URL || "http://localhost:3000/login?type=partner"}" style="background-color: #06152B; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 13.5px; display: inline-block;">
+                  Log In to Partner Portal
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- BOTTOM FOOTER -->
+          <tr>
+            <td style="background-color: #F7F4EE; padding: 16px 20px; text-align: center; border-top: 1px solid #EBE5D8;">
+              <p style="margin: 0 0 4px 0; color: #8C8275; font-size: 11.5px; font-weight: 600;">
+                Naaviverse Partner Platform
+              </p>
+              <p style="margin: 0; color: #94A3B8; font-size: 11px;">
+                This is an automated notification from Naaviverse Super Admin.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
     await sendNotificationMail(
       partner.email,

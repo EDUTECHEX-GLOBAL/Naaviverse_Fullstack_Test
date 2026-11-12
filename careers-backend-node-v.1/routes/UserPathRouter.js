@@ -41,15 +41,19 @@ router.post("/selectpath", async (req, res) => {
       });
     }
 
+    const cleanEmail = (email || "").trim();
+    const emailRegex = new RegExp("^" + cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "$", "i");
+    const pathObjId = mongoose.Types.ObjectId.isValid(pathId) ? new mongoose.Types.ObjectId(pathId) : pathId;
+
     // ── 1. Verify user exists ─────────────────────────────────────────────
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: emailRegex });
     if (!user) {
       return res.status(404).json({ status: false, message: "User not found" });
     }
 
     // ── 2. Verify path is active ──────────────────────────────────────────
     const path = await Path.findOne({
-      _id:    new mongoose.Types.ObjectId(pathId),
+      _id:    pathObjId,
       status: "active",
     }).lean();
 
@@ -57,32 +61,27 @@ router.post("/selectpath", async (req, res) => {
       return res.status(404).json({ status: false, message: "Path not found or not active" });
     }
 
-    // ── 3. Block exact duplicate — same path already active for this user ─
-    const alreadySelected = await UserPath.findOne({
-      email,
-      pathId: new mongoose.Types.ObjectId(pathId),
-      status: "active",
+    // ── 3. Check if user already enrolled in this path (or re-selecting) ─
+    let userPathDoc = await UserPath.findOne({
+      email: emailRegex,
+      pathId: pathObjId,
     });
 
-    if (alreadySelected) {
-      return res.status(200).json({
-        status:  false,
-        message: "You have already selected this path",
-        pathId,
+    if (userPathDoc) {
+      userPathDoc.status = "active";
+      userPathDoc.updatedAt = new Date();
+      await userPathDoc.save();
+    } else {
+      userPathDoc = await UserPath.create({
+        email: cleanEmail.toLowerCase(),
+        pathId:         pathObjId,
+        status:         "active",
+        completedSteps: [],
+        currentStep:    "",
       });
     }
 
-    // ── 4. Create a new userPath doc for this path ────────────────────────
-    //    No existing docs are touched — user keeps all previously selected paths.
-    const newUserPath = await UserPath.create({
-      email,
-      pathId:         new mongoose.Types.ObjectId(pathId),
-      status:         "active",
-      completedSteps: [],
-      currentStep:    "",
-    });
-
-    // ── 5. Keep naavi_users.selectedPath pointing to latest selection ─────
+    // ── 4. Keep naavi_users.selectedPath pointing to latest selection ─────
     user.selectedPath = pathId;
     await user.save();
 
@@ -90,7 +89,7 @@ router.post("/selectpath", async (req, res) => {
       status:  true,
       message: "Path selected successfully",
       pathId,
-      data:    newUserPath,
+      data:    userPathDoc,
     });
   } catch (error) {
     console.error("Select Path Error:", error);
@@ -114,13 +113,27 @@ router.get("/steps", async (req, res) => {
       return res.status(400).json({ status: false, message: "pathId is required" });
     }
 
-    const path = await Path.findById(pathId).lean();
+    const pathObjId = mongoose.Types.ObjectId.isValid(pathId) ? new mongoose.Types.ObjectId(pathId) : pathId;
+    const path = await Path.findById(pathObjId).lean();
     if (!path) {
       return res.status(404).json({ status: false, message: "Path not found" });
     }
 
-    const stepIds = path.the_ids.map(s => s.step_id);
-    const steps   = await Step.find({ _id: { $in: stepIds } }).lean();
+    const stepIds = (Array.isArray(path.the_ids) ? path.the_ids.map(s => s?.step_id) : [])
+      .filter(id => id && mongoose.Types.ObjectId.isValid(id))
+      .map(id => new mongoose.Types.ObjectId(id));
+
+    // Must fetch ONLY active steps (exclude inactive/deleted) so step count matches Explore Paths
+    const steps = await Step.find({
+      status: "active",
+      $or: [
+        { path_id: pathObjId },
+        ...(stepIds.length > 0 ? [{ _id: { $in: stepIds } }] : [])
+      ]
+    })
+      .populate({ path: "services", model: "naavi_services" })
+      .sort({ step_order: 1, createdAt: 1 })
+      .lean();
 
     // Determine destination country & course from destination coordinates or path name
     let destCountry = path.destination_country || path.feature_coordinates?.country || "";
@@ -165,31 +178,49 @@ router.get("/selected", async (req, res) => {
     const { email } = req.query;
     if (!email) return res.status(400).json({ status: false, message: "Email is required" });
 
+    const cleanEmail = (email || "").trim();
+    const emailRegex = new RegExp("^" + cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "$", "i");
+
     // ── First priority: user.selectedPath (set on every path selection) ──
-    const user = await User.findOne({ email }).lean();
+    const user = await User.findOne({ email: emailRegex }).lean();
     if (!user) return res.status(404).json({ status: false, message: "User not found" });
 
     if (user.selectedPath) {
+      const selectedPathId = user.selectedPath.toString();
+      const pathObjId = mongoose.Types.ObjectId.isValid(selectedPathId) ? new mongoose.Types.ObjectId(selectedPathId) : selectedPathId;
+
       // Verify this path is still active in userPaths collection
       const stillActive = await UserPath.findOne({
-        email,
-        pathId: new mongoose.Types.ObjectId(user.selectedPath.toString()),
+        email: emailRegex,
+        pathId: pathObjId,
         status: "active",
       }).lean();
 
       if (stillActive) {
         return res.status(200).json({
           status: true,
-          pathId: user.selectedPath.toString(),
+          pathId: selectedPathId,
+        });
+      }
+
+      // If user.selectedPath is set, check if path itself is active
+      const pathValid = await Path.findOne({
+        _id: pathObjId,
+        status: "active",
+      }).lean();
+      if (pathValid) {
+        return res.status(200).json({
+          status: true,
+          pathId: selectedPathId,
         });
       }
     }
 
     // ── Fallback: most recently enrolled active path ──
     const latestUserPath = await UserPath.findOne(
-      { email, status: "active" },
+      { email: emailRegex, status: "active" },
       { pathId: 1 },
-      { sort: { createdAt: -1 } }
+      { sort: { updatedAt: -1, createdAt: -1 } }
     ).lean();
 
     return res.status(200).json({

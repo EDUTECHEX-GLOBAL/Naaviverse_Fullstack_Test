@@ -15,6 +15,7 @@ const CustomSelect = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [openUpwards, setOpenUpwards] = useState(false);
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
   const listRef = useRef(null);
@@ -50,6 +51,20 @@ const CustomSelect = ({
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [isOpen]);
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 170 && rect.top > spaceBelow) {
+        setOpenUpwards(true);
+      } else {
+        setOpenUpwards(false);
+      }
+    } else {
+      setOpenUpwards(false);
+    }
+  }, [isOpen]);
+
 
   useEffect(() => {
     if (isOpen) {
@@ -155,7 +170,7 @@ const CustomSelect = ({
   return (
     <div
       ref={containerRef}
-      className={`custom-select-wrapper ${disabled ? 'disabled' : ''} ${className}`}
+      className={`custom-select-wrapper ${disabled ? 'disabled' : ''} ${isOpen ? 'is-open open' : ''} ${className}`}
       style={{ position: 'relative', width: '100%', ...style }}
       onKeyDown={handleKeyDown}
     >
@@ -185,7 +200,7 @@ const CustomSelect = ({
       </button>
 
       {isOpen && (
-        <div className="custom-select-dropdown custom-select-menu">
+        <div className={`custom-select-dropdown custom-select-menu ${openUpwards ? 'open-upwards' : ''}`}>
           {showSearch && (
             <div className="custom-select-search-wrap custom-select-search-box" onClick={(e) => e.stopPropagation()}>
               <svg className="custom-select-search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

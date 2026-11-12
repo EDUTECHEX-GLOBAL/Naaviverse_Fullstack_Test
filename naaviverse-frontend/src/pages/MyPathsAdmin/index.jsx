@@ -1996,9 +1996,9 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                 <div>
                   {/* Layer title */}
                   {currentLayerCfg && (
-                    <div className="pp-layer-header" style={{ marginBottom: "16px" }}>
-                      <h3 className="pp-layer-title" style={{ fontSize: "18px", fontWeight: "600" }}>{currentLayerCfg.viewName}</h3>
-                      <p className="pp-layer-desc" style={{ color: "#64748b", fontSize: "13px" }}>{currentLayerCfg.viewDesc}</p>
+                    <div className="pp-layer-header" style={{ marginBottom: "12px" }}>
+                      <h3 className="pp-layer-title" style={{ fontSize: "17px", fontWeight: "700", lineHeight: "1.25", margin: "0 0 5px 0", color: "#0f172a" }}>{currentLayerCfg.viewName}</h3>
+                      <p className="pp-layer-desc" style={{ color: "#64748b", fontSize: "13px", lineHeight: "1.38", margin: 0 }}>{currentLayerCfg.viewDesc}</p>
                     </div>
                   )}
 
@@ -2018,7 +2018,7 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                               <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
                             </svg>
                           </div>
-                          <div>
+                          <div className="pp-market-item-text">
                             <strong>{item.name}</strong>
                             <span>{item.role}</span>
                           </div>
@@ -2061,12 +2061,23 @@ const MyPathsAdmin = ({ search, admin, fetchAllServicesAgain, stepDataPage }) =>
                               <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
                             </svg>
                           </div>
-                          <div>
+                          <div className="pp-market-item-text">
                             <strong>{item.name}</strong>
                             <span>{item.role}</span>
                             {item.step_id && (
-                              <span style={{ fontSize: "11px", color: "#f59e0b", display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <span
+                                className="pp-market-warning"
+                                style={{
+                                  fontSize: "11px",
+                                  color: "#f59e0b",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  marginTop: "3px",
+                                  lineHeight: "1.2",
+                                }}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
                                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                                 </svg> Already linked to another step
                               </span>

@@ -12,6 +12,7 @@ const partnerSchema = new mongoose.Schema({
   OTPAttempts: { type: Number, default: 0 },
   isBlocked: { type: Boolean, default: false },
   OTPverified: { type: Boolean, default: false },
+  resetOtpVerified: { type: Boolean, default: false },
   status: { type: Boolean, default: false },
 
   firstName: { type: String },
@@ -85,7 +86,7 @@ partnerSchema.methods.isOTPExpired = function () {
 
   const diffMinutes = (now - created) / (1000 * 60); // convert to minutes
 
-  return diffMinutes > 5; // OTP valid for 5 minutes
+  return diffMinutes > 10; // OTP valid for 10 minutes matching email text
 };
 
 // Password match

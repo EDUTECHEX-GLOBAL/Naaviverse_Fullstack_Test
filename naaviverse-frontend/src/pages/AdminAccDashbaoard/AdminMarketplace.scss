@@ -368,7 +368,8 @@ $paid-light : #FEE2E2;
   background: $card;
   border: 1px solid $border;
   border-radius: $radius-lg;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.055);
 
   &__bar {
@@ -378,6 +379,7 @@ $paid-light : #FEE2E2;
     padding: 12px 16px;
     border-bottom: 1px solid $border;
     background: #FAFBFC;
+    border-radius: calc(#{$radius-lg} - 1px) calc(#{$radius-lg} - 1px) 0 0;
     flex-wrap: wrap;
     gap: 10px;
 
@@ -406,6 +408,7 @@ $paid-light : #FEE2E2;
 // ── Category dropdown (replaces the old static category cards) ──
 .adm-cat-dropdown {
   position: relative;
+  z-index: 50;
 
   &__btn {
     display: flex;
@@ -504,9 +507,9 @@ $paid-light : #FEE2E2;
     background: $card;
     border: 1px solid $border;
     border-radius: 14px;
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.16);
     padding: 6px;
-    z-index: 20;
+    z-index: 100;
     animation: catMenuIn 0.15s ease forwards;
   }
 
@@ -642,6 +645,7 @@ $paid-light : #FEE2E2;
   animation: tblIn 0.22s ease forwards;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  border-radius: 0 0 calc(#{$radius-lg} - 1px) calc(#{$radius-lg} - 1px);
 
   @keyframes tblIn {
     from {
@@ -885,7 +889,13 @@ $paid-light : #FEE2E2;
 // ── Empty & Skeleton ──────────────────────────────────────
 .adm-empty {
   text-align: center;
-  padding: 40px 24px;
+  padding: 48px 24px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 calc(#{$radius-lg} - 1px) calc(#{$radius-lg} - 1px);
 
   &__icon {
     width: 36px;
@@ -1707,7 +1717,7 @@ $paid-light : #FEE2E2;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .adm-panel__bar {

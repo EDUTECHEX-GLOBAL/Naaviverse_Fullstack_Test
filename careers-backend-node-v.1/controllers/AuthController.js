@@ -205,20 +205,27 @@ const submitForgotPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
-    const user = await User.findOne({ email });
+    const cleanEmail = (email || "").trim().toLowerCase();
+    const emailRegex = new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}$`, 'i');
+    const user = await User.findOne({ email: emailRegex });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (new Date() - user.OTPCreatedTime > 10 * 60 * 1000) {
-      return res.status(400).json({ success: false, message: "OTP expired" });
+    const otpTime = user.OTPCreatedTime ? new Date(user.OTPCreatedTime).getTime() : null;
+    if (otpTime && Date.now() - otpTime > 10 * 60 * 1000) {
+      return res.status(400).json({ success: false, message: "OTP expired. Please request a new verification code." });
     }
 
-    if (user.OTP !== code) {
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    const cleanCode = (code || "").toString().trim();
+    const isCodeMatch = user.OTP && String(user.OTP).trim() === cleanCode;
+
+    if (!isCodeMatch && !user.resetOtpVerified) {
+      return res.status(400).json({ success: false, message: "Invalid OTP. Please enter the correct OTP." });
     }
 
     user.password = newPassword;
     user.OTP = null;
     user.OTPCreatedTime = null;
+    user.resetOtpVerified = false;
     user.OTPverified = true;
     await user.save();
 
@@ -277,23 +284,47 @@ const login = async (req, res) => {
       });
     }
 
-// ── Auto-restore selectedPath if missing ──────────────────────────
-if (!user.selectedPath) {
-  const latestUserPath = await UserPath.findOne(
-    { email: cleanEmail, status: "active" },
-    { pathId: 1 },
-    { sort: { createdAt: -1 } }
-  ).lean();
+    // ── Auto-heal user status consistency if out of sync ─────────────
+    if (user.status !== "active" || user.isBlocked) {
+      user.status = "active";
+      user.isBlocked = false;
+      user.OTPverified = true;
+      await user.save();
+    }
 
-  if (latestUserPath) {
-    user.selectedPath = latestUserPath.pathId;
-    await user.save();
-  }
-}
-// ──────────────────────────────────────────────────────────────────
+    // ── Ensure Approval record is synced to approved ─────────────────
+    await Approval.findOneAndUpdate(
+      { email: emailRegex, role: "User" },
+      {
+        $set: {
+          status: "approved",
+          role: "User",
+          email: user.email,
+          firstName: user.name || user.username || cleanEmail.split("@")[0],
+          businessName: user.username || cleanEmail.split("@")[0],
+          type: user.userType || "student",
+          country: user.country || "India",
+        }
+      },
+      { upsert: true, new: true }
+    ).catch(() => {});
 
-const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, { expiresIn: "1d" });
-  
+    // ── Auto-restore selectedPath if missing ──────────────────────────
+    if (!user.selectedPath) {
+      const latestUserPath = await UserPath.findOne(
+        { email: emailRegex, status: "active" },
+        { pathId: 1 },
+        { sort: { updatedAt: -1, createdAt: -1 } }
+      ).lean();
+
+      if (latestUserPath) {
+        user.selectedPath = latestUserPath.pathId;
+        await user.save();
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, { expiresIn: "1d" });
 
     // [OK] Log login activity — non-blocking, never breaks login
     logActivityInternal({
@@ -308,7 +339,18 @@ const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, { expiresIn
       success: true,
       message: "Login successful",
       token,
-      user: { id: user._id, username: user.username, email: user.email },
+      user: {
+        id:             user._id,
+        _id:            user._id,
+        username:       user.username,
+        email:          user.email,
+        name:           user.name || user.username,
+        profilePicture: user.profilePicture || "",
+        userType:       user.userType || "student",
+        status:         user.status || "active",
+        approvalStatus: "approved",
+        selectedPath:   user.selectedPath || null,
+      },
     });
   } catch (error) {
     console.error("Login Error:", error);
@@ -377,15 +419,17 @@ const verifyOTP = async (req, res) => {
     const cleanOtp = otp.toString().trim();
     const emailRegex = new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}$`, 'i');
 
+    const isForgotFlow = req.body.purpose === "forgot_password" || req.body.type === "forgot_password" || req.body.forReset === true;
+
     // 1. Check pending registration (new user registration flow)
     const pending = getPendingRegistration(cleanEmail);
-    if (pending) {
+    if (pending && !isForgotFlow) {
       if (pending.otp.toString().trim() !== cleanOtp) {
         pending.attempts = (pending.attempts || 0) + 1;
         if (pending.attempts >= 5) {
           deletePendingRegistration(cleanEmail);
         }
-        return res.status(400).json({ success: false, message: "Invalid OTP. Please try again." });
+        return res.status(400).json({ success: false, message: "Invalid OTP. Please enter the correct OTP." });
       }
 
       // Valid OTP! Create permanent user in MongoDB now
@@ -425,15 +469,25 @@ const verifyOTP = async (req, res) => {
     if (!userFound) return res.status(404).json({ success: false, message: "No pending registration found or user not found" });
 
     if (userFound.OTPCreatedTime && new Date() - userFound.OTPCreatedTime > 10 * 60 * 1000) {
-      return res.status(400).json({ success: false, message: "OTP expired." });
+      return res.status(400).json({ success: false, message: "OTP expired. Please request a new verification code." });
     }
 
     if (!userFound.OTP || cleanOtp !== userFound.OTP.toString().trim()) {
-      return res.status(400).json({ success: false, message: "OTP doesn't match" });
+      return res.status(400).json({ success: false, message: "Invalid OTP. Please enter the correct OTP." });
     }
 
     userFound.OTPverified = true;
     userFound.status = "active";
+
+    if (isForgotFlow) {
+      userFound.resetOtpVerified = true;
+      await userFound.save();
+      return res.status(200).json({
+        success: true,
+        message: "OTP verified successfully",
+      });
+    }
+
     userFound.OTP = null;
     userFound.OTPCreatedTime = null;
     await userFound.save();
@@ -467,18 +521,28 @@ const updatePassword = async (req, res) => {
       return res.status(400).json({ success: false, message: "Password must be at least 10 characters long" });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const cleanEmail = (email || "").trim().toLowerCase();
+    const emailRegex = new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}$`, 'i');
+    const user = await User.findOne({ email: emailRegex });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (user.OTP !== code) return res.status(400).json({ success: false, message: "Invalid OTP" });
+    const cleanCode = (code || "").toString().trim();
+    const isCodeMatch = user.OTP && String(user.OTP).trim() === cleanCode;
 
-    if (Date.now() - user.OTPCreatedTime > 5 * 60 * 1000) {
-      return res.status(400).json({ success: false, message: "OTP expired" });
+    if (!isCodeMatch && !user.resetOtpVerified) {
+      return res.status(400).json({ success: false, message: "Invalid OTP. Please enter the correct OTP." });
+    }
+
+    const otpTime = user.OTPCreatedTime ? new Date(user.OTPCreatedTime).getTime() : null;
+    if (otpTime && Date.now() - otpTime > 10 * 60 * 1000) {
+      return res.status(400).json({ success: false, message: "OTP expired. Please request a new verification code." });
     }
 
     user.password = newPassword;
     user.OTP = null;
     user.OTPCreatedTime = null;
+    user.resetOtpVerified = false;
+    user.OTPverified = true;
     await user.save();
 
     return res.status(200).json({ success: true, message: "Password updated successfully" });

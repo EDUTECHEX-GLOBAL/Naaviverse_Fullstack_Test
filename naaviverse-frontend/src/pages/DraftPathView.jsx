@@ -29,6 +29,7 @@ const EMPTY_LAYER = {
 };
 
 const EMPTY_STEP = {
+  name: "",
   macro: { ...EMPTY_LAYER, duration: { years: "", months: "", days: "" }, marketplace: [] },
   micro: { ...EMPTY_LAYER, duration: { years: "", months: "", days: "" }, marketplace: [] },
   nano: { ...EMPTY_LAYER, duration: { years: "", months: "", days: "" }, marketplace: [] },
@@ -107,6 +108,7 @@ const normalizeStep = (raw) => {
   if (raw.macro && typeof raw.macro === "object") {
     return {
       ...raw,
+      name: raw.name || raw.stepName || "",
       macro: { ...EMPTY_LAYER, ...raw.macro, paid: false, free: raw.macro.free !== undefined ? raw.macro.free : true, marketplace: normalizeMarketplace(raw.macro.marketplace) },
       micro: { ...EMPTY_LAYER, ...raw.micro, marketplace: normalizeMarketplace(raw.micro?.marketplace) },
       nano: { ...EMPTY_LAYER, ...raw.nano, marketplace: normalizeMarketplace(raw.nano?.marketplace) },
@@ -115,6 +117,7 @@ const normalizeStep = (raw) => {
 
   return {
     ...raw,
+    name: raw.name || raw.stepName || "",
     macro: {
       ...EMPTY_LAYER,
       name: raw.macro_name || "",
@@ -469,7 +472,7 @@ const LayerBuilder = ({ layer, layerKey, data, onChange, onAddMarketplace, onEdi
       </h3>
 
       <div className="form-group">
-        <label>Name</label>
+        <label>{layerKey === "macro" ? "Macro View Name" : layerKey === "micro" ? "Micro View Name" : "Nano View Name"}</label>
         <input
           type="text"
           placeholder={`e.g., ${layerKey === "macro" ? "Career Exploration" : layerKey === "micro" ? "Aptitude Test" : "Take Online Assessment"}`}
@@ -495,16 +498,26 @@ const LayerBuilder = ({ layer, layerKey, data, onChange, onAddMarketplace, onEdi
           <DurationSelect type="months" value={safeData.duration?.months} onChange={(v) => updateDuration("months", v)} />
           <DurationSelect type="days" value={safeData.duration?.days} onChange={(v) => updateDuration("days", v)} />
         </div>
-        <div className="checkbox-group">
+        <div className="checkbox-group" style={{ display: "flex", alignItems: "center", gap: "24px", marginTop: "8px" }}>
           {layerKey !== "macro" && (
-            <label className="checkbox-label">
-              <input type="checkbox" checked={!!safeData.paid} onChange={(e) => update("paid", e.target.checked)} />
-              Paid
+            <label className="checkbox-label" style={{ display: "inline-flex", alignItems: "center", gap: "8px", cursor: "pointer", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                style={{ margin: 0, marginRight: "8px", cursor: "pointer", width: "16px", height: "16px" }}
+                checked={!!safeData.paid}
+                onChange={(e) => update("paid", e.target.checked)}
+              />
+              <span>Paid</span>
             </label>
           )}
-          <label className="checkbox-label">
-            <input type="checkbox" checked={!!safeData.free} onChange={(e) => update("free", e.target.checked)} />
-            Free
+          <label className="checkbox-label" style={{ display: "inline-flex", alignItems: "center", gap: "8px", cursor: "pointer", userSelect: "none" }}>
+            <input
+              type="checkbox"
+              style={{ margin: 0, marginRight: "8px", cursor: "pointer", width: "16px", height: "16px" }}
+              checked={!!safeData.free}
+              onChange={(e) => update("free", e.target.checked)}
+            />
+            <span>Free</span>
           </label>
         </div>
       </div>
@@ -729,13 +742,28 @@ const DraftPathView = () => {
 
     try {
       const isNew = currentStepIndex === null;
+      const stepOrder = isNew ? steps.length + 1 : steps[currentStepIndex]?.step_order;
+      const rawStepName = currentStep.name?.trim();
+      const macroName = currentStep.macro?.name?.trim() || "";
+
+      let finalStepName = rawStepName;
+      if (!finalStepName) {
+        if (macroName) {
+          finalStepName = `Step ${stepOrder}: Foundation & ${macroName.replace(/^step\s*\d+\s*:\s*/i, "")}`;
+        } else {
+          finalStepName = `Step ${stepOrder}: Milestone`;
+        }
+      } else if (!/^step\s*\d+\s*:/i.test(finalStepName) && stepOrder) {
+        finalStepName = `Step ${stepOrder}: ${finalStepName}`;
+      }
+
       const payload = {
         path_id: id,
-        step_order: isNew ? steps.length + 1 : steps[currentStepIndex]?.step_order,
+        step_order: stepOrder,
         email: JSON.parse(localStorage.getItem("partner"))?.email || "",
-        name: currentStep.name || (currentStep.step_order ? `Step ${currentStep.step_order}: ${currentStep.macro?.name || ""}` : currentStep.macro?.name) || "",
+        name: finalStepName,
 
-        macro_name: currentStep.macro?.name || "",
+        macro_name: macroName,
         macro_description: currentStep.macro?.desc || "",
         macro_length: JSON.stringify(currentStep.macro?.duration || {}),
         macro_access: "free",
@@ -1124,7 +1152,7 @@ const DraftPathView = () => {
                   <div className="step-info">
                     <span className="step-number">Step {index + 1}</span>
                     <span className="step-name">
-                      {step.macro?.name || step.macro_name || step.name || "Untitled Step"}
+                      {step.name || step.macro?.name || step.macro_name || "Untitled Step"}
                     </span>
                   </div>
                   <button className="edit-btn" onClick={() => openBuilder(index)}>
@@ -1167,7 +1195,7 @@ const DraftPathView = () => {
               </button>
               <h2>
                 Step {steps.findIndex((s) => s === currentStep || s._id === currentStep._id) + 1}:{" "}
-                {currentStep.macro?.name || currentStep.name || "Untitled"}
+                {currentStep.name || currentStep.macro?.name || "Untitled"}
               </h2>
             </div>
             <div className="detail-content">
@@ -1197,6 +1225,21 @@ const DraftPathView = () => {
             </div>
 
             <div className="builder-content">
+              <div className="builder-layer" style={{ borderLeft: "4px solid #0d6b6e", marginBottom: "1.25rem" }}>
+                <h3 style={{ color: "#0d6b6e", fontSize: "0.9rem", fontWeight: 600, marginBottom: "1.25rem" }}>
+                  STEP DETAILS
+                </h3>
+                <div className="form-group">
+                  <label>Step Name <span style={{ fontSize: "0.75rem", color: "#6b7280", fontWeight: 400 }}>(Overall Milestone Title — should be different from Macro View Name)</span></label>
+                  <input
+                    type="text"
+                    placeholder={`e.g., Step ${currentStepIndex === null ? steps.length + 1 : currentStepIndex + 1}: Foundation & Industry Discovery`}
+                    value={currentStep.name || ""}
+                    onChange={(e) => setCurrentStep((prev) => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+              </div>
+
               {LAYERS.map((layerKey) => (
                 <LayerBuilder
                   key={layerKey}
@@ -1255,7 +1298,7 @@ const DraftPathView = () => {
                   steps.map((step, index) => (
                     <li key={step._id || index} onClick={() => openDetail(index)}>
                       <span className="step-num">Step {index + 1}</span>
-                      {step.macro?.name || step.macro_name || step.name || "Untitled"}
+                      {step.name || step.macro?.name || step.macro_name || "Untitled"}
                     </li>
                   ))
                 )}

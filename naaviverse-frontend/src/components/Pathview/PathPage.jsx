@@ -49,13 +49,26 @@ const PathPage = () => {
         const pathRes = await axios.get(`${BASE_URL}/api/paths/viewpath/${pathId}`);
         setPathName(pathRes?.data?.data?.nameOfPath || "Untitled Path");
 
-        const stepsRes = await axios.get(`${BASE_URL}/api/steps/get`, {
-          params: { path_id: pathId },
-        });
+        let stepsList = [];
+        try {
+          const userStepsRes = await axios.get(`${BASE_URL}/api/userpaths/steps`, {
+            params: { pathId },
+          });
+          if (Array.isArray(userStepsRes?.data?.data?.steps)) {
+            stepsList = userStepsRes.data.data.steps;
+          }
+        } catch (_) {}
 
-        const sorted = (stepsRes?.data?.data || []).sort(
-          (a, b) => (a.step_order || 0) - (b.step_order || 0)
-        );
+        if (!stepsList.length) {
+          const stepsRes = await axios.get(`${BASE_URL}/api/steps/get`, {
+            params: { path_id: pathId },
+          });
+          stepsList = stepsRes?.data?.data || [];
+        }
+
+        const sorted = (stepsList || [])
+          .filter((s) => s.status === "active")
+          .sort((a, b) => (a.step_order || 0) - (b.step_order || 0));
         setSteps(sorted);
       } catch (err) {
         setError("Failed to fetch path details.");
@@ -141,7 +154,12 @@ const PathPage = () => {
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 5,
-                      padding: "5px 12px",
+                      padding: "8px 20px",
+                      minHeight: 36,
+                      border: "1px solid rgba(108,92,231,0.16)",
+                      borderRadius: 10,
+                      fontSize: "0.95rem",
+                      boxShadow: "0 1px 4px rgba(108, 92, 231, 0.08)",
                     }}>
                       <SvgClock size={15} /> {duration}
                     </div>

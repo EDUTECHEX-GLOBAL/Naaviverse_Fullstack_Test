@@ -1193,9 +1193,9 @@ const MyStepsAdmin = ({ search, admin, fetchAllServicesAgain }) => {
               {modalScreen === "marketplace_attach" && (
                 <div>
                   {currentLayerCfg && (
-                    <div className="admin-pp-layer-header pp-layer-header" style={{ marginBottom: "16px" }}>
-                      <h3 className="admin-pp-layer-title pp-layer-title" style={{ fontSize: "18px", fontWeight: "600" }}>{currentLayerCfg.viewName}</h3>
-                      <p className="admin-pp-layer-desc pp-layer-desc" style={{ color: "#64748b", fontSize: "13px" }}>{currentLayerCfg.viewDesc}</p>
+                    <div className="admin-pp-layer-header pp-layer-header" style={{ marginBottom: "12px" }}>
+                      <h3 className="admin-pp-layer-title pp-layer-title" style={{ fontSize: "17px", fontWeight: "700", lineHeight: "1.25", margin: "0 0 5px 0", color: "#0f172a" }}>{currentLayerCfg.viewName}</h3>
+                      <p className="admin-pp-layer-desc pp-layer-desc" style={{ color: "#64748b", fontSize: "13px", lineHeight: "1.38", margin: 0 }}>{currentLayerCfg.viewDesc}</p>
                     </div>
                   )}
 
@@ -1210,7 +1210,7 @@ const MyStepsAdmin = ({ search, admin, fetchAllServicesAgain }) => {
                       <div className="admin-pp-market-item" key={item._id}>
                         <div className="admin-pp-market-item-info">
                           <div className="admin-pp-market-emoji"><SvgPackage size={20} /></div>
-                          <div>
+                          <div className="admin-pp-market-item-text">
                             <strong>{item.name}</strong>
                             <span>{item.role}</span>
                           </div>
@@ -1243,17 +1243,27 @@ const MyStepsAdmin = ({ search, admin, fetchAllServicesAgain }) => {
                   ) : availableItems.length === 0 ? (
                     <div className="admin-pp-empty">No other {marketLayer} items in marketplace</div>
                   ) : (
-                    // REPLACE the availableItems.map block in marketplace_attach
                     availableItems.map(item => (
                       <div className="admin-pp-market-item" key={item._id}>
                         <div className="admin-pp-market-item-info">
                           <div className="admin-pp-market-emoji"><SvgPackage size={20} /></div>
-                          <div>
+                          <div className="admin-pp-market-item-text">
                             <strong>{item.name}</strong>
-                            <span>{item.role}</span>    {/* ← span is already separate, issue is CSS */}
+                            <span>{item.role}</span>
                             {item.step_id && (
-                              <span style={{ fontSize: "11px", color: "#f59e0b", display: "block" }}>
-                                <SvgWarning size={14} /> Already linked to another step
+                              <span
+                                className="admin-pp-market-warning"
+                                style={{
+                                  fontSize: "11px",
+                                  color: "#f59e0b",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  marginTop: "3px",
+                                  lineHeight: "1.2",
+                                }}
+                              >
+                                <SvgWarning size={13} style={{ flexShrink: 0 }} /> Already linked to another step
                               </span>
                             )}
                           </div>

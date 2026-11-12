@@ -1,64 +1,73 @@
 import React, { Fragment, useState } from 'react';
-import { validatePersonName } from '../../utils/emailValidator';
+import axios from 'axios';
+import { validatePersonName, validateEmail } from '../../utils/emailValidator';
+
+const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const ContactForm = () => {
-    // New API endpoint URL for NoCodeAPI Google Sheets integration
-    const sheetAPIURL = 'https://v1.nocodeapi.com/anuradha1024/google_sheets/hsjQKzADGrGfmBmC?tabId=Sheet1';
-
-    // State to manage success or error message
     const [statusMessage, setStatusMessage] = useState('');
+    const [isSuccess, setIsSuccess] = useState(false);
     const [nameVal, setNameVal] = useState('');
     const [nameError, setNameError] = useState('');
+    const [emailVal, setEmailVal] = useState('');
+    const [emailError, setEmailError] = useState('');
+    const [messageVal, setMessageVal] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     // Handle form submission
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const rawName = e.target.elements.name.value;
-        const validation = validatePersonName(rawName, "Name");
-        if (!validation.isValid) {
-            setNameError(validation.message);
-            setStatusMessage(validation.message);
+        const nameValidation = validatePersonName(nameVal, "Name");
+        if (!nameValidation.isValid) {
+            setNameError(nameValidation.message);
+            setStatusMessage(nameValidation.message);
+            setIsSuccess(false);
             return;
         }
         setNameError('');
 
-        // Retrieve form data
-        const formData = [
-            [validation.cleanName, e.target.elements.email.value.trim(), e.target.elements.message.value.trim()]
-        ];
+        const emailValidation = validateEmail(emailVal);
+        if (!emailValidation.isValid) {
+            setEmailError(emailValidation.message);
+            setStatusMessage(emailValidation.message);
+            setIsSuccess(false);
+            return;
+        }
+        setEmailError('');
 
-        // Headers setup for the request
-        var myHeaders = new Headers();
-        myHeaders.append('Content-Type', 'application/json');
+        if (!messageVal.trim()) {
+            setStatusMessage('Please enter a message');
+            setIsSuccess(false);
+            return;
+        }
 
-        // Request options for the fetch call
-        var requestOptions = {
-            method: 'POST',
-            headers: myHeaders,
-            redirect: 'follow',
-            body: JSON.stringify(formData) // Send form data as an array
-        };
-
-        // Send form data to Google Sheets via NoCodeAPI
-        fetch(sheetAPIURL, requestOptions)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.text(); // Parsing as text to see the response from the API
-            })
-            .then(result => {
-                console.log('Success:', result); // Log the result from the fetch
-                setStatusMessage('Form submitted successfully!'); // Set success message
-                setNameVal('');
-                setNameError('');
-                e.target.reset(); // Reset the form after submission
-            })
-            .catch(error => {
-                console.error('Error:', error); // Log any errors during submission
-                setStatusMessage('Error submitting the form: ' + error.message); // Set error message
+        try {
+            setSubmitting(true);
+            await axios.post(`${BASE_URL}/api/admin-contact`, {
+                fullName: nameValidation.cleanName,
+                email: emailValidation.cleanEmail,
+                message: messageVal.trim(),
+                product: 'OTHER',
+                inquiryType: 'OTHER',
+                question: 'General Inquiry / Website Question',
+                source: 'Contact Form',
             });
+
+            setIsSuccess(true);
+            setStatusMessage('Form submitted successfully!');
+            setNameVal('');
+            setEmailVal('');
+            setMessageVal('');
+            setNameError('');
+            setEmailError('');
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            setIsSuccess(false);
+            setStatusMessage(error.response?.data?.message || 'Error submitting the form. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -103,10 +112,27 @@ const ContactForm = () => {
                             <input
                                 type="email"
                                 name="email"
+                                value={emailVal}
+                                onChange={(e) => {
+                                    setEmailVal(e.target.value);
+                                    if (emailError) {
+                                        const res = validateEmail(e.target.value);
+                                        setEmailError(res.isValid ? '' : res.message);
+                                    }
+                                }}
+                                onBlur={() => {
+                                    const res = validateEmail(emailVal);
+                                    setEmailError(res.isValid ? '' : res.message);
+                                }}
                                 placeholder="Your Email"
-                                className="form-control"
+                                className={`form-control ${emailError ? 'is-invalid' : ''}`}
                                 required
                             />
+                            {emailError && (
+                                <div className="text-danger mt-1" style={{ fontSize: '13px' }}>
+                                    {emailError}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -116,9 +142,11 @@ const ContactForm = () => {
                             <label>Message*</label>
                             <textarea
                                 name="message"
+                                value={messageVal}
+                                onChange={(e) => setMessageVal(e.target.value)}
                                 placeholder="Your Message"
                                 className="form-control"
-                                rows="5" // You can adjust the rows as needed
+                                rows="5"
                                 required
                             ></textarea>
                         </div>
@@ -126,15 +154,15 @@ const ContactForm = () => {
 
                     {/* Submit Button */}
                     <div className="col-12">
-                        <button type="submit" className="btn-eight ripple-btn">
-                            Submit
+                        <button type="submit" className="btn-eight ripple-btn" disabled={submitting}>
+                            {submitting ? 'Submitting...' : 'Submit'}
                         </button>
                     </div>
 
                     {/* Status Message */}
                     <div className="col-12">
                         {statusMessage && (
-                            <p className={statusMessage.includes('successfully') ? 'text-success' : 'text-danger'}>
+                            <p className={`mt-2 ${isSuccess ? 'text-success' : 'text-danger'}`}>
                                 {statusMessage}
                             </p>
                         )}

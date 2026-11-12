@@ -291,6 +291,7 @@ export default function UserTopHeader({ onBack }) {
       let pathId = localStorage.getItem("selectedPathId");
       let pathName = localStorage.getItem("selectedPathName");
       let stepsCount = localStorage.getItem("selectedPathSteps");
+      const currentOwner = localStorage.getItem("selectedPathOwner");
 
       // Verify active path from API for this user
       if (email) {
@@ -299,10 +300,13 @@ export default function UserTopHeader({ onBack }) {
             params: { email },
           });
           const serverPathId = selRes.data?.status && selRes.data?.pathId ? selRes.data.pathId : null;
-          if (serverPathId) {
-            pathId = serverPathId;
-            localStorage.setItem("selectedPathId", pathId);
-            localStorage.setItem("selectedPathOwner", email);
+          // If no local pathId or stored path owner does not match, adopt serverPathId
+          if (!pathId || (currentOwner && currentOwner.toLowerCase() !== email.toLowerCase())) {
+            if (serverPathId) {
+              pathId = serverPathId;
+              localStorage.setItem("selectedPathId", pathId);
+              localStorage.setItem("selectedPathOwner", email);
+            }
           } else if (!serverPathId && !pathId) {
             pathId = null;
             pathName = null;
@@ -346,7 +350,11 @@ export default function UserTopHeader({ onBack }) {
           localStorage.setItem("selectedPathName", fetchedName);
         }
 
-        const count = pathDoc.StepDetails?.length || pathDoc.total_steps || stepsData.steps?.length || 0;
+        const count =
+          (Array.isArray(stepsData.steps) && stepsData.steps.length > 0 ? stepsData.steps.length : null) ||
+          (Array.isArray(pathDoc.StepDetails) && pathDoc.StepDetails.length > 0 ? pathDoc.StepDetails.filter(s => s.status === "active").length || pathDoc.StepDetails.length : null) ||
+          pathDoc.total_steps ||
+          0;
         if (count > 0) {
           stepsCount = `${count} Steps`;
           localStorage.setItem("selectedPathSteps", stepsCount);

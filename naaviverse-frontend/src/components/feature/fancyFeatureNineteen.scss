@@ -387,3 +387,62 @@
     transform: translateY(-18px) rotate(-13deg);
   }
 }
+
+/* ── Targeted adjustments for 1536 x 730 laptop screens ── */
+@media screen and (min-width: 1200px) and (max-width: 1536px), screen and (min-width: 1200px) and (max-height: 768px) {
+  .fancy-feature-nineteen {
+    padding: 40px 0 !important;
+
+    .feature-grid {
+      gap: 36px !important;
+      align-items: center !important;
+    }
+
+    .illustration-holder {
+      position: relative !important;
+      right: auto !important;
+      top: auto !important;
+      width: 100% !important;
+      margin-top: 0 !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+    }
+
+    .main-illustration {
+      width: 100% !important;
+      max-width: 480px !important;
+      height: auto !important;
+      margin-left: 0 !important;
+      object-fit: contain !important;
+    }
+
+    .main-title {
+      font-size: 38px !important;
+      line-height: 1.25 !important;
+      white-space: normal !important;
+    }
+
+    .block-style-thirteen .list-item {
+      gap: 14px !important;
+
+      li,
+      li.process-item {
+        padding: 16px 18px 16px 68px !important;
+        min-height: 82px !important;
+      }
+
+      .numb {
+        left: 16px !important;
+      }
+
+      li h6 {
+        font-size: 15px !important;
+      }
+
+      li span {
+        font-size: 13px !important;
+      }
+    }
+  }
+}

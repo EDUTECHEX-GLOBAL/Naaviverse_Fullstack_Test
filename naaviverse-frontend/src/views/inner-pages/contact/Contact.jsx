@@ -106,6 +106,23 @@ export default function Contact() {
     }
   }, [location]);
 
+  useEffect(() => {
+    if (location.search) {
+      const params = new URLSearchParams(location.search);
+      const inq = params.get("inquiry") || params.get("product") || params.get("type");
+      if (inq) {
+        const match = INQUIRY_OPTIONS.find(
+          (o) =>
+            o.value.toLowerCase() === inq.toLowerCase() ||
+            o.desktop.toLowerCase().includes(inq.toLowerCase())
+        );
+        if (match) {
+          setProduct(match.value);
+        }
+      }
+    }
+  }, [location.search]);
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [product, setProduct] = useState("");
@@ -114,11 +131,13 @@ export default function Contact() {
   const [status, setStatus] = useState("");
   const [statusType, setStatusType] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedOption = INQUIRY_OPTIONS.find((item) => item.value === product);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     const nameVal = validatePersonName(fullName, "Full Name");
     if (!nameVal.isValid) {
@@ -167,8 +186,19 @@ export default function Contact() {
     }
 
     const formattedMobile = `${currentPhoneCountry.code} ${mobile.trim()}`;
-    const contactData = { fullName: fullName.trim(), email: cleanEmail, product, mobile: formattedMobile, message: message.trim() };
+    const questionText = selectedOption ? (isMobile ? selectedOption.mobile : selectedOption.desktop) : (product || "General Inquiry");
+    const contactData = {
+      fullName: fullName.trim(),
+      email: cleanEmail,
+      product: product || "OTHER",
+      inquiryType: product || "OTHER",
+      question: questionText,
+      mobile: formattedMobile,
+      message: message.trim(),
+      source: "Landing Page Contact Us",
+    };
 
+    setIsSubmitting(true);
     try {
       await axios.post(`${BASE_URL}/api/admin-contact`, contactData);
       setStatus("Message sent successfully! We'll reach out to you soon.");
@@ -182,6 +212,8 @@ export default function Contact() {
       const errorMsg = error.response?.data?.message || "Error sending message. Please try again.";
       setStatus(errorMsg);
       setStatusType("error");
+    } finally {
+      setIsSubmitting(false);
     }
 
     setToastVisible(true);
@@ -493,9 +525,22 @@ export default function Contact() {
                   />
                 </div>
 
-                <button type="submit" className="contact-submit-btn">
-                  Send Message
-                  <Icon icon="bi:arrow-right" />
+                <button
+                  type="submit"
+                  className={`contact-submit-btn ${isSubmitting ? "is-loading" : ""}`}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="contact-btn-spinner" aria-hidden="true" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Send Message</span>
+                      <Icon icon="bi:arrow-right" />
+                    </>
+                  )}
                 </button>
 
                 {status && (

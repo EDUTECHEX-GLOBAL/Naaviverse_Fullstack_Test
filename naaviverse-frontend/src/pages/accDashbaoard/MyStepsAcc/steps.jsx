@@ -484,7 +484,7 @@ const LayerSection = ({ layerKey, data, onChange, onAddMarketplace, onEditMarket
 
       {/* Name */}
       <div style={styles.formGroup}>
-        <label style={styles.label}>Name</label>
+        <label style={styles.label}>{layerKey === "macro" ? "Macro View Name" : layerKey === "micro" ? "Micro View Name" : "Nano View Name"}</label>
         <input
           type="text"
           style={styles.input}
@@ -514,24 +514,26 @@ const LayerSection = ({ layerKey, data, onChange, onAddMarketplace, onEditMarket
           <DurationSelect type="months" value={data.duration?.months} onChange={(v) => updateDuration("months", v)} />
           <DurationSelect type="days"   value={data.duration?.days}   onChange={(v) => updateDuration("days", v)} />
         </div>
-        <div style={styles.checkboxRow}>
+        <div style={{ ...styles.checkboxRow, display: "flex", alignItems: "center", gap: "24px", marginTop: "8px" }}>
           {layerKey !== "macro" && (
-            <label style={styles.checkboxLabel}>
+            <label style={{ ...styles.checkboxLabel, display: "inline-flex", alignItems: "center", gap: "8px", cursor: "pointer", userSelect: "none" }}>
               <input
                 type="checkbox"
+                style={{ margin: 0, marginRight: "8px", cursor: "pointer", width: "16px", height: "16px" }}
                 checked={!!data.paid}
                 onChange={(e) => update("paid", e.target.checked)}
               />
-              Paid
+              <span>Paid</span>
             </label>
           )}
-          <label style={styles.checkboxLabel}>
+          <label style={{ ...styles.checkboxLabel, display: "inline-flex", alignItems: "center", gap: "8px", cursor: "pointer", userSelect: "none" }}>
             <input
               type="checkbox"
+              style={{ margin: 0, marginRight: "8px", cursor: "pointer", width: "16px", height: "16px" }}
               checked={!!data.free}
               onChange={(e) => update("free", e.target.checked)}
             />
-            Free
+            <span>Free</span>
           </label>
         </div>
       </div>
@@ -805,11 +807,26 @@ const EditStepForm = ({ selectedStep, onSave, onCancel }) => {
     try {
       const partner = JSON.parse(localStorage.getItem("partner"));
 
+      const rawStepName = formData.stepName?.trim();
+      const macroName = formData.macro?.name?.trim() || "";
+      const stepOrder = selectedStep?.step_order || 1;
+
+      let finalStepName = rawStepName;
+      if (!finalStepName) {
+        if (macroName) {
+          finalStepName = `Step ${stepOrder}: Foundation & ${macroName.replace(/^step\s*\d+\s*:\s*/i, "")}`;
+        } else {
+          finalStepName = `Step ${stepOrder}: Milestone`;
+        }
+      } else if (!/^step\s*\d+\s*:/i.test(finalStepName) && stepOrder) {
+        finalStepName = `Step ${stepOrder}: ${finalStepName}`;
+      }
+
       const payload = {
         email: partner?.email || "",
-        name: formData.stepName?.trim() || (selectedStep?.step_order ? `Step ${selectedStep.step_order}: ${formData.macro?.name || ""}` : formData.macro?.name) || "",
+        name: finalStepName,
 
-        macro_name:         formData.macro?.name || "",
+        macro_name:         macroName,
         macro_description:  formData.macro?.desc || "",
         macro_length:       JSON.stringify(formData.macro?.duration || {}),
         macro_access:       "free",
@@ -877,7 +894,7 @@ const EditStepForm = ({ selectedStep, onSave, onCancel }) => {
       <div style={{ ...styles.layerSection, borderLeft: "3px solid #0d6b6e" }}>
         <h3 style={{ ...styles.layerTitle, color: "#0d6b6e" }}>STEP DETAILS</h3>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Step Name</label>
+          <label style={styles.label}>Step Name <span style={{ fontSize: "0.75rem", color: "#6b7280", fontWeight: 400 }}>(Overall Milestone Title — should be different from Macro View Name)</span></label>
           <input
             type="text"
             style={styles.input}
@@ -1001,16 +1018,18 @@ const styles = {
   },
   checkboxRow: {
     display: "flex",
-    gap: "1.25rem",
+    alignItems: "center",
+    gap: "1.5rem",
     marginTop: "0.5rem",
   },
   checkboxLabel: {
-    display: "flex",
+    display: "inline-flex",
     alignItems: "center",
-    gap: "0.4rem",
+    gap: "0.5rem",
     fontSize: "0.88rem",
     cursor: "pointer",
     color: "#2d3748",
+    userSelect: "none",
   },
   marketplaceList: {
     marginBottom: "0.5rem",

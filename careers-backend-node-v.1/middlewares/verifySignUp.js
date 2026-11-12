@@ -110,7 +110,9 @@ const sendNotificationMail = async (email, subject, message, attachments = []) =
 
   const defaultAttachments = attachments ? [...attachments] : [];
   if (message && message.includes("cid:naavi_logo") && !defaultAttachments.some(a => a.cid === "naavi_logo")) {
-    const logoPath = path.join(__dirname, "../utils/naavi_final_logo2.png");
+    const primaryLogo = path.join(__dirname, "../utils/skillnaav_logo.png");
+    const fallbackLogo = path.join(__dirname, "../utils/naavi_final_logo2.png");
+    const logoPath = fs.existsSync(primaryLogo) ? primaryLogo : fallbackLogo;
     if (fs.existsSync(logoPath)) {
       defaultAttachments.push({
         filename: "naavi_logo.png",

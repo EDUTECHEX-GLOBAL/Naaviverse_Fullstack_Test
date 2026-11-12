@@ -511,11 +511,28 @@ export default function PartnerHome({ setispopular }) {
             Back to Paths
           </button>
           <div className="ph-detail-hero">
-            <div className="ph-detail-avatar">[trending]</div>
+            <div
+              className="ph-detail-avatar"
+              style={{
+                width: 44,
+                height: 44,
+                minWidth: 44,
+                borderRadius: 10,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)",
+                boxShadow: "0 4px 12px rgba(13, 148, 136, 0.25)",
+              }}
+            >
+              <SvgTrendingUp size={22} color="#ffffff" />
+            </div>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
                 <h2 style={{ fontFamily: "var(--ph-display)", fontSize: 22, fontWeight: 700, color: "#1e293b", margin: 0 }}>{p.nameOfPath}</h2>
                 <span className="ph-status-pill ph-status-active">● Active</span>
+                <span className="ph-status-pill" style={{ background: "#ccfbf1", color: "#0f766e", fontWeight: 600 }}>Trending</span>
               </div>
               <div style={{ fontSize: 13, color: "#94a3b8" }}>{p.category}</div>
             </div>

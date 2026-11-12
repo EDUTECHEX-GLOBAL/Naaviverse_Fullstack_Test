@@ -1,0 +1,928 @@
+/* ==========================================================================
+   NAAVIVERSE PARTNER AI CHATBOT STYLES
+   Dedicated Styles for Partner Flow Chatbot
+   Unified with Naaviverse Design System (Poppins, Modern Pastel Blue & Slate)
+   Space-Optimized Layout: Maximized Chat Area, Compact Chrome
+   Class Names are strictly namespaced with 'naavi-partner-chat-' to prevent
+   any collision with the User Flow Chatbot styles.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+.naavi-partner-chatbot-root {
+  position: relative;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  z-index: 9999999 !important;
+}
+
+/* --------------------------------------------------------------------------
+   1. FLOATING TRIGGER BUTTON (FIXED AT BOTTOM-RIGHT WHEN CLOSED)
+   -------------------------------------------------------------------------- */
+.naavi-partner-chat-floating-btn {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  width: 64px !important;
+  height: 64px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border: 3px solid #ffffff !important;
+  box-shadow:
+    0 4px 14px rgba(37, 99, 235, 0.28),
+    0 2px 6px rgba(15, 23, 42, 0.08) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  transition: all 0.25s ease !important;
+  z-index: 9999999 !important;
+  outline: none !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+
+  &:hover {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow:
+      0 8px 22px rgba(37, 99, 235, 0.36),
+      0 3px 8px rgba(15, 23, 42, 0.1);
+
+    .naavi-partner-chat-tooltip-pill {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    .naavi-partner-chat-avatar-img {
+      transform: translateY(-1px) scale(1.05);
+    }
+  }
+
+  &:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.25);
+  }
+
+  &.active {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.8);
+  }
+}
+
+.naavi-partner-chat-logo-ring {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  border: none !important;
+  box-shadow: none !important;
+  position: relative;
+  z-index: 1;
+  padding: 0 !important;
+
+  .naavi-partner-chat-avatar-img {
+    width: 27px !important;
+    height: 27px !important;
+    max-width: 27px !important;
+    max-height: 27px !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: auto !important;
+    filter: none !important;
+    transform: translateY(-1px);
+    transition: transform 0.2s ease;
+  }
+}
+
+.naavi-partner-chat-unread-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+  animation: partner-pulse-dot 1.8s infinite;
+  z-index: 3;
+}
+
+@keyframes partner-pulse-dot {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* Tooltip Pill (Positioned on top of circular button) */
+.naavi-partner-chat-tooltip-pill {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  background: #0f172a;
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  z-index: 10;
+
+  .naavi-partner-chat-pill-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+    flex-shrink: 0;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px 6px 0 6px;
+    border-style: solid;
+    border-color: #0f172a transparent transparent transparent;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. RIGHT-SIDE SLIDING DRAWER BACKDROP
+   -------------------------------------------------------------------------- */
+.naavi-partner-chat-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 9999998 !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: flex-end !important;
+  padding: 20px;
+  animation: partnerBackdropFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  &.naavi-partner-chat-closing {
+    animation: partnerBackdropFadeOut 0.26s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+}
+
+@keyframes partnerBackdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes partnerBackdropFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. RIGHT-SIDE SLIDING DRAWER (COMPACT, PROPERLY ALIGNED)
+   -------------------------------------------------------------------------- */
+.naavi-partner-chat-drawer,
+.naavi-partner-chat-modal {
+  width: 375px;
+  max-width: calc(100vw - 32px);
+  height: 490px;
+  max-height: calc(100vh - 44px);
+  min-height: 360px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow:
+    -10px 10px 36px -8px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  font-family: 'Poppins', sans-serif !important;
+  animation: partnerSlideInRight 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  &.naavi-partner-chat-closing {
+    animation: partnerSlideOutRight 0.26s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+}
+
+@keyframes partnerSlideInRight {
+  from {
+    transform: translateX(110%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes partnerSlideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. SLEEK HEADER (CLEAN BRANDED BAR)
+   -------------------------------------------------------------------------- */
+.naavi-partner-chat-header {
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.naavi-partner-chat-header-profile {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.naavi-partner-chat-header-avatar {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  flex-shrink: 0;
+
+  img {
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: auto !important;
+    filter: none !important;
+    transform: translateY(-0.75px);
+  }
+
+  .naavi-partner-chat-online-badge {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+  }
+}
+
+.naavi-partner-chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.naavi-partner-chat-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.2px;
+  font-family: 'Poppins', sans-serif;
+  line-height: 1.2;
+}
+
+.naavi-partner-chat-badge {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.naavi-partner-chat-header-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+  position: static !important;
+  margin: 0 !important;
+}
+
+.naavi-partner-chat-header-btn {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  bottom: auto !important;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+  box-shadow: none;
+
+  &:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &.naavi-partner-chat-clear-btn:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #ef4444;
+  }
+
+  &.naavi-partner-chat-close-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. MAXIMIZED CONVERSATION BODY (TIGHT PADDING & ROOMY BUBBLES)
+   -------------------------------------------------------------------------- */
+.naavi-partner-chat-body {
+  flex: 1 1 auto;
+  padding: 10px 12px;
+  overflow-y: auto;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+}
+
+.naavi-partner-chat-message-row {
+  display: flex;
+  gap: 8px;
+  max-width: 100%;
+
+  &.partner-user-message-row {
+    justify-content: flex-end;
+  }
+
+  &.partner-assistant-message-row {
+    justify-content: flex-start;
+  }
+}
+
+.naavi-partner-chat-msg-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 1px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  box-sizing: border-box;
+
+  img {
+    width: 16px !important;
+    height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: auto !important;
+    filter: none !important;
+    transform: translateY(-0.75px);
+  }
+}
+
+.naavi-partner-chat-bubble {
+  padding: 8px 12px;
+  border-radius: 13px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 11.5px;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  word-break: break-word;
+  overflow-wrap: break-word;
+
+  &.partner-user-bubble {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    border-bottom-right-radius: 3px;
+    margin-left: auto;
+    max-width: 82%;
+    box-shadow: 0 2px 7px rgba(37, 99, 235, 0.18);
+
+    .naavi-partner-chat-timestamp {
+      color: rgba(255, 255, 255, 0.75);
+      text-align: right;
+    }
+  }
+
+  &.partner-assistant-bubble {
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 3px;
+    max-width: calc(100% - 34px);
+    flex: 1;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+
+    .naavi-partner-chat-timestamp {
+      color: #94a3b8;
+      text-align: left;
+    }
+  }
+}
+
+.naavi-partner-chat-timestamp {
+  font-size: 9px;
+  margin-top: 3px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+}
+
+/* Rich Formatted Elements inside Assistant Bubble */
+.naavi-partner-chat-bubble-content {
+  .naavi-partner-chat-paragraph {
+    margin: 0 0 4px 0;
+    font-family: 'Poppins', sans-serif;
+    color: #1e293b;
+    font-size: 11.5px;
+    line-height: 1.5;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .naavi-partner-chat-heading-h4 {
+    margin: 6px 0 3px 0;
+    font-family: 'Poppins', sans-serif;
+    color: #0f172a;
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.35;
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  .naavi-partner-chat-heading-h5 {
+    margin: 5px 0 2px 0;
+    font-family: 'Poppins', sans-serif;
+    color: #1e293b;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.35;
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  .naavi-partner-chat-bullet-list {
+    margin: 3px 0 5px 0;
+    padding-left: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    li {
+      font-family: 'Poppins', sans-serif;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #334155;
+      word-break: break-word;
+      overflow-wrap: break-word;
+
+      strong {
+        color: #0f172a;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .naavi-partner-chat-callout {
+    background: #f0f7ff;
+    border-left: 2.5px solid #2563eb;
+    padding: 5px 9px;
+    margin: 4px 0;
+    border-radius: 0 6px 6px 0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #1e40af;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .naavi-partner-chat-spacer {
+    height: 4px;
+  }
+
+  .naavi-partner-chat-divider {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 6px 0;
+  }
+
+  .naavi-partner-chat-code-inline {
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10.5px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .naavi-partner-chat-table-wrapper {
+    margin: 5px 0;
+    overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    max-width: 100%;
+  }
+
+  .naavi-partner-chat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Poppins', sans-serif;
+    font-size: 10.5px;
+    line-height: 1.35;
+    background: #ffffff;
+
+    th {
+      background: #f8fafc;
+      color: #0f172a;
+      font-weight: 600;
+      padding: 4px 7px;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 4px 7px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #334155;
+      vertical-align: top;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+  }
+}
+
+/* Typing Indicator */
+.partner-typing-bubble {
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.naavi-partner-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 3.5px;
+  padding: 2px 0;
+
+  .partner-typing-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #94a3b8;
+    animation: partnerTypingBounce 1.2s infinite ease-in-out;
+
+    &:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+    &:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+  }
+}
+
+@keyframes partnerTypingBounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+    background: #2563eb;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. OPTIMIZED SLIM SUGGESTION CHIPS
+   -------------------------------------------------------------------------- */
+.naavi-partner-chat-suggestions {
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  padding: 4px 10px 2px;
+  flex-shrink: 0;
+}
+
+.naavi-partner-chat-suggestions-scroll {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.naavi-partner-chat-pill-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-family: 'Poppins', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+
+  .naavi-partner-chat-pill-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #2563eb;
+    line-height: 1;
+
+    svg {
+      display: block;
+    }
+  }
+
+  .naavi-partner-chat-pill-label {
+    line-height: 1;
+    white-space: nowrap;
+    font-size: 10px;
+  }
+
+  &:hover:not(:disabled) {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(37, 99, 235, 0.08);
+
+    .naavi-partner-chat-pill-icon {
+      color: #1d4ed8;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. OPTIMIZED COMPACT INPUT FOOTER
+   -------------------------------------------------------------------------- */
+.naavi-partner-chat-footer {
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  padding: 8px 14px;
+  flex-shrink: 0;
+}
+
+.naavi-partner-chat-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  height: 33px;
+  padding: 0 3px 0 12px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+
+  &:focus-within {
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 2.5px rgba(37, 99, 235, 0.12);
+  }
+}
+
+.naavi-partner-chat-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  color: #0f172a;
+  height: 100%;
+  padding: 0;
+  line-height: 1.2;
+
+  &::placeholder {
+    color: #94a3b8;
+    font-size: 11.5px;
+    font-family: 'Poppins', sans-serif;
+  }
+}
+
+.naavi-partner-chat-send-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: #e2e8f0;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+
+  &.active {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 3px 8px rgba(37, 99, 235, 0.38);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   8. RESPONSIVENESS (DESKTOP, TABLET, IPAD, MOBILE)
+   -------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .naavi-partner-chat-floating-btn {
+    bottom: 18px;
+    right: 18px;
+    width: 60px;
+    height: 60px;
+
+    .naavi-partner-chat-logo-ring {
+      width: 44px;
+      height: 44px;
+
+      .naavi-partner-chat-avatar-img {
+        width: 25px;
+        height: 25px;
+        max-width: 25px;
+        max-height: 25px;
+        transform: translateY(-1px);
+      }
+    }
+
+    .naavi-partner-chat-tooltip-pill {
+      display: none;
+    }
+  }
+
+  .naavi-partner-chat-backdrop {
+    padding: 0;
+    align-items: stretch;
+    justify-content: flex-end;
+  }
+
+  .naavi-partner-chat-drawer,
+  .naavi-partner-chat-modal {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  .naavi-partner-chat-body {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .naavi-partner-chat-bubble {
+    max-width: 94%;
+    padding: 7px 10px;
+    font-size: 11.5px;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 1024px) {
+  /* iPad / Tablet layout */
+  .naavi-partner-chat-backdrop {
+    padding: 16px;
+    align-items: flex-end;
+  }
+
+  .naavi-partner-chat-drawer,
+  .naavi-partner-chat-modal {
+    width: 360px;
+    max-width: calc(100vw - 32px);
+    height: 480px;
+    max-height: calc(100vh - 32px);
+  }
+}
+

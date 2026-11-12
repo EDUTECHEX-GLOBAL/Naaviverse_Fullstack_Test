@@ -96,6 +96,8 @@
 .ip-btn-primary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 6px;
   background: var(--accent);
   color: #ffffff;
@@ -144,6 +146,10 @@
 }
 
 .ip-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   background: var(--surface);
   color: #3f3f46;
   border: 1px solid var(--border);
@@ -1247,41 +1253,96 @@
   box-shadow: -18px 0 42px rgba(18, 22, 43, 0.14);
 
   .d-head {
-    padding: 20px;
+    position: relative;
+    padding: 18px 48px 18px 20px;
     border-bottom: 1px solid var(--border-soft);
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     background: linear-gradient(180deg, #fbfaff 0%, #ffffff 100%);
 
     .d-user {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 12px;
+      flex: 1;
+      min-width: 0;
 
       .avatar-sm {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        aspect-ratio: 1 / 1 !important;
+        border-radius: 12px !important;
         color: #fff;
         font-weight: 700;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
+        letter-spacing: 0.02em;
         display: flex;
         align-items: center;
         justify-content: center;
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+        flex: 0 0 40px !important;
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+        margin-top: 2px;
+      }
+
+      .d-user-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
       }
 
       h3 {
         font-family: "Poppins", sans-serif;
         font-size: 1rem;
+        font-weight: 600;
         margin: 0;
         color: var(--ink);
+        line-height: 1.35;
+        word-break: break-word;
       }
 
       .d-sub {
-        font-size: 0.75rem;
+        font-size: 0.76rem;
         color: var(--ink-soft);
+        margin: 0;
+        line-height: 1.45;
+        display: block;
+        word-break: normal;
+        overflow-wrap: break-word;
+        text-wrap: pretty;
+        text-wrap: balance;
+      }
+    }
+
+    .m-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: transparent;
+      color: #6b7280;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      flex-shrink: 0;
+      transition: background 0.15s ease, color 0.15s ease;
+
+      &:hover {
+        background: #f1f2f8;
+        color: var(--ink);
       }
     }
   }
@@ -1374,7 +1435,15 @@
     border-top: 1px solid var(--border-soft);
     display: flex;
     gap: 8px;
-    button { flex: 1; }
+    button,
+    .ip-btn-secondary,
+    .ip-btn-primary {
+      flex: 1;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-align: center !important;
+    }
   }
 }
 
@@ -1399,6 +1468,17 @@
     max-width: min(540px, calc(100vw - var(--admin-sidebar-width, 210px) - 48px)) !important;
     max-height: calc(100vh - 48px) !important;
     margin: 0 auto !important;
+  }
+
+  .d-foot {
+    button,
+    .ip-btn-secondary,
+    .ip-btn-primary {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-align: center !important;
+    }
   }
 }
 
@@ -1527,21 +1607,20 @@
     animation: ipDrawerSlideInMobile 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 
     .d-head {
-      padding: 14px 16px !important;
+      position: relative !important;
+      padding: 14px 46px 14px 16px !important;
       background: #ffffff !important;
       border-bottom: 1px solid var(--border-soft) !important;
       flex-shrink: 0 !important;
       display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
-      gap: 12px !important;
+      align-items: flex-start !important;
 
       .d-user {
         gap: 12px !important;
         min-width: 0 !important;
         flex: 1 !important;
         display: flex !important;
-        align-items: center !important;
+        align-items: flex-start !important;
 
         .avatar-sm {
           width: 40px !important;
@@ -1552,26 +1631,29 @@
           max-height: 40px !important;
           aspect-ratio: 1 / 1 !important;
           border-radius: 11px !important;
-          font-size: 0.85rem !important;
+          font-size: 0.82rem !important;
           font-weight: 700 !important;
           color: #ffffff !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
+          flex: 0 0 40px !important;
           flex-shrink: 0 !important;
+          flex-grow: 0 !important;
           padding: 0 !important;
           box-sizing: border-box !important;
           line-height: 1 !important;
+          margin-top: 1px !important;
         }
 
-        > div {
+        .d-user-info {
           min-width: 0 !important;
           flex: 1 !important;
           display: flex !important;
           flex-direction: column !important;
-          justify-content: center !important;
+          justify-content: flex-start !important;
           gap: 2px !important;
-          overflow: hidden !important;
+          overflow: visible !important;
         }
 
         h3 {
@@ -1582,35 +1664,35 @@
           line-height: 1.25 !important;
           word-break: break-word !important;
           white-space: normal !important;
-          display: -webkit-box !important;
-          -webkit-line-clamp: 2 !important;
-          -webkit-box-orient: vertical !important;
-          overflow: hidden !important;
+          display: block !important;
         }
 
         .d-sub {
           font-size: 0.74rem !important;
           color: var(--ink-soft) !important;
           margin: 0 !important;
-          line-height: 1.25 !important;
-          word-break: break-word !important;
+          line-height: 1.35 !important;
+          word-break: normal !important;
+          overflow-wrap: break-word !important;
           white-space: normal !important;
-          display: -webkit-box !important;
-          -webkit-line-clamp: 1 !important;
-          -webkit-box-orient: vertical !important;
-          overflow: hidden !important;
-          text-overflow: ellipsis !important;
+          display: block !important;
+          -webkit-line-clamp: unset !important;
+          text-wrap: pretty !important;
+          text-wrap: balance !important;
         }
       }
 
       .m-close {
+        position: absolute !important;
+        top: 10px !important;
+        right: 10px !important;
         width: 32px !important;
         min-width: 32px !important;
         max-width: 32px !important;
         height: 32px !important;
         min-height: 32px !important;
         border-radius: 8px !important;
-        background: #f1f5f9 !important;
+        background: transparent !important;
         color: #475569 !important;
         display: flex !important;
         align-items: center !important;
@@ -1623,7 +1705,7 @@
         transition: background 0.15s ease !important;
 
         &:hover {
-          background: #e2e8f0 !important;
+          background: #f1f5f9 !important;
           color: #1e293b !important;
         }
       }

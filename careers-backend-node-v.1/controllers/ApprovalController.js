@@ -1,6 +1,6 @@
 const Approval = require("../models/ApprovalModel");
 const { sendNotificationMail } = require("../middlewares/verifySignUp");
-const { getApprovalEmailContent } = require("../utils/otpEmailTemplate");
+const { getApprovalEmailContent, getRejectionEmailContent } = require("../utils/otpEmailTemplate");
 const User = require("../models/UsersModel");
 const Partner = require("../models/PartnerModel");
 const { validatePersonName } = require("../utils/emailValidator");
@@ -118,7 +118,52 @@ exports.getApprovalByEmail = async (req, res) => {
       ? role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
       : "Partner";
 
-    const approval = await Approval.findOne({ email, role: normalisedRole });
+    const cleanEmail = email.trim();
+    const emailRegex = new RegExp("^" + cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "$", "i");
+
+    let approval = await Approval.findOne({ email: emailRegex, role: normalisedRole });
+
+    if (!approval) {
+      if (normalisedRole === "User") {
+        const user = await User.findOne({ email: emailRegex });
+        if (user && user.OTPverified && !user.isBlocked) {
+          approval = await Approval.findOneAndUpdate(
+            { email: emailRegex, role: "User" },
+            {
+              $set: {
+                status: "approved",
+                role: "User",
+                email: user.email,
+                firstName: user.name || user.username || cleanEmail.split("@")[0],
+                businessName: user.username || cleanEmail.split("@")[0],
+                type: user.userType || "student",
+                country: user.country || "India",
+              }
+            },
+            { upsert: true, new: true }
+          );
+        }
+      } else if (normalisedRole === "Partner") {
+        const partner = await Partner.findOne({ email: emailRegex });
+        if (partner && partner.OTPverified && !partner.isBlocked && (partner.accountStatus === "active" || partner.status === true || partner.creationSource === "admin_created")) {
+          approval = await Approval.findOneAndUpdate(
+            { email: emailRegex, role: "Partner" },
+            {
+              $set: {
+                status: "approved",
+                role: "Partner",
+                email: partner.email,
+                firstName: partner.firstName || partner.username || cleanEmail.split("@")[0],
+                businessName: partner.businessName || partner.username || cleanEmail.split("@")[0],
+                type: partner.partnerType || "Mentor",
+                country: partner.country || "India",
+              }
+            },
+            { upsert: true, new: true }
+          );
+        }
+      }
+    }
 
     if (!approval) {
       return res.json({ status: false, message: "No approval record found", data: null });
@@ -126,6 +171,7 @@ exports.getApprovalByEmail = async (req, res) => {
 
     res.json({ status: true, data: approval });
   } catch (err) {
+    console.error("getApprovalByEmail error:", err);
     res.status(500).json({ status: false, message: "Error fetching approval status" });
   }
 };
@@ -162,14 +208,31 @@ exports.updateApproval = async (req, res) => {
       if (isUser) {
         await User.findOneAndUpdate(emailQuery, { status: "active", isBlocked: false, OTPverified: true });
       } else {
-        await Partner.findOneAndUpdate(emailQuery, { status: true, isBlocked: false, accountStatus: "active", OTPverified: true });
+        const partnerUpdates = {
+          status: true,
+          isBlocked: false,
+          accountStatus: "active",
+          OTPverified: true,
+        };
+        if (approval.businessName) partnerUpdates.businessName = approval.businessName;
+        if (approval.firstName) partnerUpdates.firstName = approval.firstName;
+        if (approval.lastName) partnerUpdates.lastName = approval.lastName;
+        if (approval.type) partnerUpdates.partnerType = approval.type;
+        if (approval.website) partnerUpdates.website = approval.website;
+        if (approval.country) partnerUpdates.country = approval.country;
+        if (approval.position) partnerUpdates.yourPosition = approval.position;
+
+        await Partner.findOneAndUpdate(emailQuery, partnerUpdates);
       }
     } else if (status === "rejected") {
-      sendNotificationMail(
-        approval.email,
-        `Naaviverse ${roleLabel} Application Update`,
-        `${greeting},<br>Unfortunately your application was not approved.<br>${reason ? `Reason: ${reason}` : "Please contact support for more information."}`
-      );
+      const { subject: rejSubject, html: rejHtml } = getRejectionEmailContent({
+        role: approval.role,
+        email: approval.email,
+        recipientName: approval.firstName || approval.businessName || approval.email,
+        reason: reason || "",
+      });
+
+      sendNotificationMail(approval.email, rejSubject, rejHtml);
     } else if (status === "deactivated") {
       const emailQuery = { email: { $regex: new RegExp("^" + (approval.email || "").trim() + "$", "i") } };
       if (isUser) {
@@ -245,10 +308,21 @@ exports.activateApproval = async (req, res) => {
         { status: "active", isBlocked: false, OTPverified: true }
       );
     } else {
-      await Partner.findOneAndUpdate(
-        emailQuery,
-        { status: true, isBlocked: false, accountStatus: "active", OTPverified: true }
-      );
+      const partnerUpdates = {
+        status: true,
+        isBlocked: false,
+        accountStatus: "active",
+        OTPverified: true,
+      };
+      if (approval.businessName) partnerUpdates.businessName = approval.businessName;
+      if (approval.firstName) partnerUpdates.firstName = approval.firstName;
+      if (approval.lastName) partnerUpdates.lastName = approval.lastName;
+      if (approval.type) partnerUpdates.partnerType = approval.type;
+      if (approval.website) partnerUpdates.website = approval.website;
+      if (approval.country) partnerUpdates.country = approval.country;
+      if (approval.position) partnerUpdates.yourPosition = approval.position;
+
+      await Partner.findOneAndUpdate(emailQuery, partnerUpdates);
     }
 
     res.json({ status: true, data: approval, message: "Record activated in DB successfully" });

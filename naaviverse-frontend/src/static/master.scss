@@ -335,6 +335,8 @@ select option {
     cursor: not-allowed;
   }
 
+  &.open,
+  &.is-open,
   &:focus-within,
   &.active,
   &:has(.open),
@@ -426,6 +428,12 @@ select option {
     z-index: 10000;
     box-sizing: border-box;
     overflow: hidden;
+
+    &.open-upwards {
+      top: auto !important;
+      bottom: calc(100% + 4px) !important;
+      box-shadow: 0 -8px 24px rgba(15, 33, 55, 0.16) !important;
+    }
 
     .custom-select-search-wrap,
     .custom-select-search-box {
@@ -534,41 +542,20 @@ select option {
   }
 }
 
-/* ─── Desktop vs Mobile Dropdown Switcher (Desktop Modern Custom, Mobile Untouched) ─── */
-@media (min-width: 769px) {
-  .project-desktop-custom-select {
-    display: block !important;
-    width: 100%;
-    position: relative;
+/* ─── Unified Responsive Custom Dropdowns (Consistent on Desktop, Tablet & Mobile) ─── */
+.project-desktop-custom-select {
+  display: block !important;
+  width: 100%;
+  position: relative;
 
-    &.inline {
-      display: inline-block !important;
-      width: auto;
-      min-width: 75px;
-      vertical-align: middle;
-    }
-  }
-  .project-mobile-native-select {
-    display: none !important;
+  &.inline {
+    display: inline-block !important;
+    width: auto;
+    min-width: 75px;
+    vertical-align: middle;
   }
 }
 
-@media (max-width: 768px) {
-  .project-desktop-custom-select {
-    display: none !important;
-  }
-  .project-mobile-native-select {
-    display: block !important;
-    width: 100%;
-
-    &.inline {
-      display: inline-block !important;
-      width: auto;
-      vertical-align: middle;
-    }
-  }
+.project-mobile-native-select {
+  display: none !important;
 }
-
-
-
-

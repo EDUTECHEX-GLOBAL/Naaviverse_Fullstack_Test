@@ -22,6 +22,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 
 const app = express();
+app.set("trust proxy", process.env.TRUST_PROXY || "loopback, linklocal, uniquelocal");
 
 /* ------------------- AWS CONFIG ------------------- */
 AWS.config.update({ region: "ap-south-1" });
@@ -64,6 +65,7 @@ const cityRoutes = require("./routes/CityRouter");
 const agentPathsRouter = require("./routes/AgentPathsRouter");
 const feedbackRouter = require("./routes/FeedbackRouter");
 const pathRequestRouter = require("./routes/PathRequestRouter");
+const chatbotRouter = require("./routes/ChatbotRouter");
 
 // ── Super Admin — newsletter/landing page email subscriptions ──────────────
 const adminNewsletterRoutes = require("./Admin/routes/SubscriptionRouter");
@@ -206,6 +208,7 @@ app.use("/api/utils", require("./routes/AddStepIdsRouter"));
 app.use("/api/stepviews", require("./routes/StepViewsRouter"));
 app.use("/api/wallet", require("./routes/VaultRouter"));
 app.use("/api/categories", require("./routes/CategoriesRouter"));
+app.use("/api/chatbot", chatbotRouter);
 
 /* ------------------- ERROR HANDLING ------------------- */
 

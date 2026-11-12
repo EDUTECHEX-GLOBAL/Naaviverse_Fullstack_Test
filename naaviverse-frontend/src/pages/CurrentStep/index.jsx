@@ -13,7 +13,7 @@ import { SvgClose, SvgCheck } from "../../utils/SvgIcons";
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const LAYER_COST_FREEMIUM = { micro: 2, nano: 4 };
-const LAYER_COST_SUBSCRIBER = { micro: 5, nano: 10 };
+const LAYER_COST_SUBSCRIBER = { micro: 2, nano: 4 };
 
 const PLAN_META = {
   standard: { label: "Standard", credits: 100, monthlyPrice: "₹830", annualPrice: "₹9,960", monthlyAmt: 830, annualAmt: 9960 },
@@ -36,23 +36,23 @@ const PLAN_COLORS = {
 const PLAN_FEATS = {
   standard: [
     "Macro View — Always Free",
-    "Micro View — 5 Credits/Step",
-    "Nano View — 10 Credits/Step",
+    "Micro View — 2 Credits/Step",
+    "Nano View — 4 Credits/Step",
     "Full Marketplace Access",
     "Cancel Anytime",
   ],
   pro: [
     "Macro View — Always Free",
-    "Micro View — 5 Credits/Step",
-    "Nano View — 10 Credits/Step",
+    "Micro View — 2 Credits/Step",
+    "Nano View — 4 Credits/Step",
     "Priority Marketplace Access",
     "Progress Tracking",
     "Cancel Anytime",
   ],
   proplus: [
     "Macro View — Always Free",
-    "Micro View — 5 Credits/Step",
-    "Nano View — 10 Credits/Step",
+    "Micro View — 2 Credits/Step",
+    "Nano View — 4 Credits/Step",
     "Full Marketplace + Exclusive Content",
     "Priority Mentor Matching",
     "Dedicated Success Manager",
@@ -1024,14 +1024,32 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
   };
 
   /* ── Derived values ──────────────────────────────────────────── */
-  const stepName = currentStepData?.name || currentStepPageData?.name || null;
+  const stepNumber = currentStepPageData?.step_order || localStorage.getItem("selectedStepNumber") || null;
+  const rawStepName = currentStepData?.name || currentStepPageData?.name || null;
+  const macroCardName = (
+    currentStepPageData?.macro_name
+      ? currentStepPageData.macro_name.replace(/^step\s*\d+\s*:\s*/i, "").trim()
+      : (macroView?.name
+        ? macroView.name.replace(/^step\s*\d+\s*:\s*/i, "").trim()
+        : (currentStepPageData?.name ? currentStepPageData.name.replace(/^step\s*\d+\s*:\s*/i, "").trim() : "Overview"))
+  );
+
+  let stepName = rawStepName;
+  if (stepName && macroCardName) {
+    const cleanStep = stepName.replace(/^step\s*\d+\s*:\s*/i, "").trim().toLowerCase();
+    const cleanMacro = macroCardName.trim().toLowerCase();
+    if (cleanStep === cleanMacro) {
+      const stepNumStr = stepNumber ? `Step ${stepNumber}: ` : "";
+      stepName = `${stepNumStr}Foundation & ${macroCardName}`;
+    }
+  }
+
   const stepDesc = currentStepPageData?.macro_description || currentStepPageData?.description || null;
   const macroDesc = currentStepPageData?.macro_description || macroView?.description || macroView || null;
   const microDesc = currentStepPageData?.micro_description || getMicroText(microView) || null;
   const nanoDesc = nanoView?.description || null;
   const isPageLoading = stepLoading;
   const isViewsLoad = viewsLoading;
-  const stepNumber = currentStepPageData?.step_order || localStorage.getItem("selectedStepNumber") || null;
 
   /* ── Render: Success screen ──────────────────────────────────── */
   if (showSuccess) {
@@ -1254,7 +1272,7 @@ const CurrentStep = ({ productDataArray, selectedPathId, showSelectedPath, selec
                 <span className="vc-access-badge badge-free">Free</span>
               </div>
               <div className="vc-body">
-                {currentStepPageData?.name && <div className="vc-step-name">{currentStepPageData.name}</div>}
+                {macroCardName && <div className="vc-step-name">{macroCardName}</div>}
                 <div className="vc-title">Why This Step Matters</div>
                 {macroDesc
                   ? <div className="vc-desc">{macroDesc}</div>

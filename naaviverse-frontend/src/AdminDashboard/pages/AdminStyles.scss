@@ -862,7 +862,7 @@ body {
 }
 
 @media (max-width: 1199.98px) {
-  .admin-nav-link {
+  .admin-nav-link:not(.admin-nav-link--logout) {
     color: #0f172a !important;
     font-weight: 600 !important;
 
@@ -876,6 +876,24 @@ body {
 
       svg {
         color: #1d4ed8 !important;
+      }
+    }
+  }
+
+  .admin-nav-link--logout {
+    color: #e11d48 !important;
+    font-weight: 600 !important;
+
+    svg {
+      color: #e11d48 !important;
+    }
+
+    &:hover {
+      background: #fff1f2 !important;
+      color: #be123c !important;
+
+      svg {
+        color: #be123c !important;
       }
     }
   }

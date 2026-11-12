@@ -405,13 +405,20 @@ const AdminMarketplace = () => {
 
   // Counts per category (no email/name filter — used in the dropdown menu)
   const categoryCounts = Object.keys(CATEGORY_CONFIG).reduce((acc, cat) => {
-    acc[cat] = items.filter((i) => i.role?.toLowerCase() === cat).length;
+    acc[cat] = items.filter((i) => {
+      const r = i.role?.toLowerCase().trim();
+      return r === cat || (cat === "distributor" && r?.startsWith("distribut")) || (cat === "institution" && r?.startsWith("institut"));
+    }).length;
     return acc;
   }, {});
 
   // Filtered items for the active table view
   const filteredItems = items.filter((item) => {
-    const roleMatch  = item.role?.toLowerCase() === activeCategory;
+    const r = item.role?.toLowerCase().trim();
+    const roleMatch  =
+      r === activeCategory ||
+      (activeCategory === "distributor" && r?.startsWith("distribut")) ||
+      (activeCategory === "institution" && r?.startsWith("institut"));
     const emailMatch = !emailSearch || item.partner_email?.toLowerCase().includes(emailSearch.toLowerCase());
     const nameMatch  = !nameSearch  || item.name?.toLowerCase().includes(nameSearch.toLowerCase());
     return roleMatch && emailMatch && nameMatch;

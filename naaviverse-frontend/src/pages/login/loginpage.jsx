@@ -185,6 +185,9 @@ const Loginpage = ({ initialType }) => {
     const [forgotCountdown, setForgotCountdown] = useState(60);
     const [forgotResendLoading, setForgotResendLoading] = useState(false);
     const [forgotResendSuccess, setForgotResendSuccess] = useState("");
+    const [forgotOtpError, setForgotOtpError] = useState("");
+    const [forgotOtpLoading, setForgotOtpLoading] = useState(false);
+    const [resetPasswordError, setResetPasswordError] = useState("");
 
     // Countdown timer for Forgot Password OTP
     useEffect(() => {
@@ -554,7 +557,8 @@ const Loginpage = ({ initialType }) => {
         setLoginError(null);
         setiserror(false);
         const currentRole = overrideRole || loginType;
-        const obj = { email, password };
+        const cleanEmail = (email || "").trim();
+        const obj = { email: cleanEmail, password };
 
         try {
             const response = await Loginservice(obj, currentRole);
@@ -577,7 +581,12 @@ const Loginpage = ({ initialType }) => {
             localStorage.setItem("authToken", result.token);
 
             if (result.user) {
-                localStorage.setItem("user", JSON.stringify(result.user));
+                const fullUser = {
+                    ...result.user,
+                    user: result.user,
+                    approvalStatus: result.user.approvalStatus || "approved",
+                };
+                localStorage.setItem("user", JSON.stringify(fullUser));
             }
 
             localStorage.setItem("userType", currentRole === "Users" ? "user" : "partner");
@@ -585,8 +594,7 @@ const Loginpage = ({ initialType }) => {
             const emailToStore =
                 result?.user?.email ||
                 result?.partner?.email ||
-                obj.email ||
-                email ||
+                cleanEmail ||
                 "";
 
             localStorage.setItem("loginEmail", emailToStore);
@@ -595,14 +603,17 @@ const Loginpage = ({ initialType }) => {
 
             if (currentRole === "Users") {
                 if (result.user) {
-                    let userObj = { ...result.user };
+                    let userObj = {
+                        ...result.user,
+                        user: result.user,
+                        approvalStatus: result.user.approvalStatus || "approved",
+                    };
                     localStorage.setItem("user", JSON.stringify(userObj));
 
                     if (result.user.profilePicture) {
                         localStorage.setItem("userProfilePic", result.user.profilePicture);
                     }
 
-                    let isComplete = false;
                     try {
                         const profileRes = await axios.get(
                             `${BASE_URL}/api/users/get/${result.user.email}`
@@ -617,27 +628,20 @@ const Loginpage = ({ initialType }) => {
                             if (profileData.profilePicture) {
                                 localStorage.setItem("userProfilePic", profileData.profilePicture);
                             }
-                            isComplete =
-                                profileData.isProfileCompleted === true ||
-                                Boolean(
-                                    profileData.name &&
-                                    profileData.username &&
-                                    profileData.phoneNumber &&
-                                    profileData.school &&
-                                    profileData.personality
-                                );
                         }
                     } catch (e) {
                         console.warn("Could not fetch profile at login:", e?.message);
                     }
 
                     // Check live approval status
-                    let approvalStatus = "pending";
+                    let approvalStatus = result.user.approvalStatus || "approved";
                     try {
                         const approvalRes = await axios.get(
                             `${BASE_URL}/api/approvals/status?email=${result.user.email}&role=User`
                         );
-                        approvalStatus = approvalRes.data?.data?.status || "pending";
+                        if (approvalRes.data?.data?.status) {
+                            approvalStatus = approvalRes.data.data.status;
+                        }
                     } catch (e) {
                         console.warn("Could not fetch approval status at login:", e?.message);
                     }
@@ -645,9 +649,9 @@ const Loginpage = ({ initialType }) => {
                     userObj.approvalStatus = approvalStatus;
                     localStorage.setItem("user", JSON.stringify(userObj));
 
-                    // Clear any path data from a previous user or session, or if unapproved
+                    // Clear path data ONLY if switching to a different user account
                     const prevPathOwner = localStorage.getItem("selectedPathOwner");
-                    if ((prevPathOwner && prevPathOwner.toLowerCase() !== result.user.email.toLowerCase()) || approvalStatus !== "approved") {
+                    if (prevPathOwner && prevPathOwner.toLowerCase() !== result.user.email.toLowerCase()) {
                         [
                             "selectedPathId", "selectedPathName", "selectedPathSteps",
                             "selectedPathCountry", "selectedPathUniversity", "selectedPathPathway",
@@ -655,7 +659,24 @@ const Loginpage = ({ initialType }) => {
                         ].forEach((k) => localStorage.removeItem(k));
                     }
 
-                    if (approvalStatus === "approved" && isComplete) {
+                    // Restore user's selected path from database if present
+                    if (result.user.selectedPath) {
+                        localStorage.setItem("selectedPathId", String(result.user.selectedPath));
+                        localStorage.setItem("selectedPathOwner", result.user.email.toLowerCase());
+                    } else if (!localStorage.getItem("selectedPathId")) {
+                        try {
+                            const selRes = await axios.get(`${BASE_URL}/api/userpaths/selected?email=${result.user.email}`);
+                            if (selRes.data?.pathId) {
+                                localStorage.setItem("selectedPathId", String(selRes.data.pathId));
+                                localStorage.setItem("selectedPathOwner", result.user.email.toLowerCase());
+                            }
+                        } catch (_) {}
+                    }
+
+                    try {
+                        window.dispatchEvent(new Event("naavi:login"));
+                    } catch (_) {}
+                    if (approvalStatus === "approved") {
                         navigate("/dashboard/users/home");
                     } else {
                         navigate("/dashboard/users/profile");
@@ -839,6 +860,12 @@ const Loginpage = ({ initialType }) => {
                     title: "Email Verification Required",
                     message: msg || "Please verify your email via OTP before logging in.",
                 });
+            } else if (!error.response || error.code === "ERR_NETWORK" || error.message?.includes("Network Error")) {
+                setLoginError({
+                    type: "error",
+                    title: "Server Connection Error",
+                    message: "Unable to reach the backend server on port 4545. Please ensure the server is active.",
+                });
             } else {
                 setLoginError({
                     type: "error",
@@ -976,6 +1003,7 @@ const Loginpage = ({ initialType }) => {
 
         setForgotResendLoading(true);
         setForgotResendSuccess("");
+        setForgotOtpError("");
         try {
             const response = await axios.post(
                 `${BASE_URL}/${loginType === "Users" ? "api/auth" : "api/partner"}/forgotPassword`,
@@ -984,6 +1012,7 @@ const Loginpage = ({ initialType }) => {
             if (response.data?.success) {
                 setForgotCountdown(60);
                 setCode("");
+                setForgotOtpError("");
                 setForgotResendSuccess("A new code has been sent to your email.");
                 toast.success("New verification code sent to your email!");
                 setTimeout(() => setForgotResendSuccess(""), 4000);
@@ -998,6 +1027,69 @@ const Loginpage = ({ initialType }) => {
         }
     };
 
+    const handleVerifyForgotOtp = async (e) => {
+        if (e) e.preventDefault();
+        const cleanCode = (code || "").trim();
+        if (!cleanCode || cleanCode.length !== 6) {
+            const msg = "Please enter the 6-digit verification code.";
+            setForgotOtpError(msg);
+            toast.error(msg);
+            return;
+        }
+
+        const cleanEmail = (email || "").trim().toLowerCase();
+        if (!cleanEmail) {
+            const msg = "Email address is missing. Please restart the reset process.";
+            setForgotOtpError(msg);
+            toast.error(msg);
+            return;
+        }
+
+        setForgotOtpLoading(true);
+        setForgotOtpError("");
+        try {
+            const url = `${BASE_URL}/${loginType === "Users" ? "api/auth" : "api/partner"}/verifyotp`;
+            const response = await axios.post(url, {
+                email: cleanEmail,
+                otp: cleanCode,
+                purpose: "forgot_password",
+                type: "forgot_password",
+            });
+
+            if (response.data?.success) {
+                setForgotOtpError("");
+                toast.success("OTP verified successfully!");
+                setForgotPasswordStep(3);
+            } else {
+                const msg = response.data?.message || "Invalid OTP. Please enter the correct OTP.";
+                setForgotOtpError(msg);
+                toast.error(msg);
+            }
+        } catch (error) {
+            console.error("Error verifying OTP:", error);
+            const serverMsg = error.response?.data?.message;
+            let displayMsg = "Invalid OTP. Please enter the correct OTP.";
+            if (serverMsg) {
+                if (serverMsg.toLowerCase().includes("expired")) {
+                    displayMsg = "OTP expired. Please request a new verification code.";
+                } else if (
+                    serverMsg.toLowerCase().includes("invalid") ||
+                    serverMsg.toLowerCase().includes("match") ||
+                    serverMsg.toLowerCase().includes("incorrect") ||
+                    serverMsg.toLowerCase().includes("wrong")
+                ) {
+                    displayMsg = "Invalid OTP. Please enter the correct OTP.";
+                } else {
+                    displayMsg = serverMsg;
+                }
+            }
+            setForgotOtpError(displayMsg);
+            toast.error(displayMsg);
+        } finally {
+            setForgotOtpLoading(false);
+        }
+    };
+
     const submitForgotPassword = async () => {
         if (!code || !newPassword2) return;
 
@@ -1008,6 +1100,8 @@ const Loginpage = ({ initialType }) => {
         };
 
         try {
+            setLoading(true);
+            setResetPasswordError("");
             const response = await axios.post(
                 `${BASE_URL}/${loginType === "Users" ? "api/auth" : "api/partner"}/updatepassword`,
                 obj
@@ -1023,13 +1117,35 @@ const Loginpage = ({ initialType }) => {
                 setCode("");
                 setNewPassword1("");
                 setNewPassword2("");
+                setForgotOtpError("");
+                setResetPasswordError("");
             } else {
-                toast.error(result?.message || "Password reset failed. Please try again.");
+                const msg = result?.message || "Password reset failed. Please try again.";
+                setResetPasswordError(msg);
+                toast.error(msg);
             }
         } catch (error) {
-            console.error("Error in submitForgotPassword:", error);
-            const errMsg = error.response?.data?.message || "Error submitting password reset. Please try again.";
-            toast.error(errMsg);
+            const serverMsg = error.response?.data?.message;
+            const errMsg = serverMsg || "Error submitting password reset. Please try again.";
+
+            const isOtpError =
+                errMsg.toLowerCase().includes("otp") ||
+                errMsg.toLowerCase().includes("code") ||
+                errMsg.toLowerCase().includes("verification");
+
+            if (isOtpError) {
+                const otpErrMsg = "Invalid OTP. Please enter the correct OTP.";
+                setForgotOtpError(otpErrMsg);
+                toast.error(otpErrMsg);
+                // Redirect user back to Step 2 so they can enter the correct OTP
+                setCode("");
+                setForgotPasswordStep(2);
+            } else {
+                setResetPasswordError(errMsg);
+                toast.error(errMsg);
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -1136,6 +1252,9 @@ const Loginpage = ({ initialType }) => {
                                 setForgotPassword(false);
                                 setForgotPasswordStep(1);
                                 setemail("");
+                                setCode("");
+                                setForgotOtpError("");
+                                setResetPasswordError("");
                                 setLoading(false);
                             }}
                         >
@@ -1158,13 +1277,16 @@ const Loginpage = ({ initialType }) => {
                         <div className="welcome-subtitle">We've sent a 6-digit verification code to your email. Please enter it below.</div>
                     </div>
                     <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            if (code?.length === 6) setForgotPasswordStep(3);
-                        }}
+                        onSubmit={handleVerifyForgotOtp}
                         style={{ width: "100%" }}
                     >
-                        <div className="input-box otp-box">
+                        {forgotOtpError && (
+                            <div className="prompt-div" style={{ marginBottom: "12px" }}>
+                                <SvgWarning size={16} color="#ef4444" style={{ flexShrink: 0, marginTop: "2px" }} />
+                                <span>{forgotOtpError}</span>
+                            </div>
+                        )}
+                        <div className={`input-box otp-box ${forgotOtpError ? "input-error" : ""}`}>
                             <OtpIcon />
                             <input
                                 className="input-inp"
@@ -1176,14 +1298,17 @@ const Loginpage = ({ initialType }) => {
                                     const pasted = (e.clipboardData || window.clipboardData)?.getData("text") || "";
                                     const cleanDigits = pasted.replace(/[^0-9]/g, "").slice(0, 6);
                                     setCode(cleanDigits);
+                                    setForgotOtpError("");
                                 }}
                                 onChange={(e) => {
                                     const cleanDigits = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
                                     setCode(cleanDigits);
+                                    setForgotOtpError("");
                                 }}
                                 onInput={(e) => {
                                     const cleanDigits = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
                                     setCode(cleanDigits);
+                                    setForgotOtpError("");
                                 }}
                                 maxLength={6}
                                 inputMode="numeric"
@@ -1221,10 +1346,10 @@ const Loginpage = ({ initialType }) => {
                         </div>
                         <button
                             type="submit"
-                            className={`login-btn ${code?.length === 6 ? "" : "disabled"}`}
-                            disabled={code?.length !== 6}
+                            className={`login-btn ${code?.length === 6 && !forgotOtpLoading ? "" : "disabled"}`}
+                            disabled={code?.length !== 6 || forgotOtpLoading}
                         >
-                            Verify Code
+                            {forgotOtpLoading ? "Verifying..." : "Verify Code"}
                         </button>
                     </form>
                     <div className="login-footer-link" style={{ marginTop: "20px" }}>
@@ -1233,6 +1358,7 @@ const Loginpage = ({ initialType }) => {
                             onClick={() => {
                                 setForgotPasswordStep(1);
                                 setCode("");
+                                setForgotOtpError("");
                             }}
                         >
                             ← Back to Email
@@ -1325,14 +1451,23 @@ const Loginpage = ({ initialType }) => {
                         }}
                         style={{ width: "100%" }}
                     >
-                        <div className="input-box password-box">
+                        {resetPasswordError && (
+                            <div className="prompt-div" style={{ marginBottom: "12px" }}>
+                                <SvgWarning size={16} color="#ef4444" style={{ flexShrink: 0, marginTop: "2px" }} />
+                                <span>{resetPasswordError}</span>
+                            </div>
+                        )}
+                        <div className={`input-box password-box ${resetPasswordError ? "input-error" : ""}`}>
                             <LockIcon />
                             <input
                                 className="input-inp"
                                 type={forgotEye2 ? "text" : "password"}
                                 placeholder="Confirm password"
                                 value={newPassword2}
-                                onInput={(e) => setNewPassword2(e.target.value)}
+                                onInput={(e) => {
+                                    setNewPassword2(e.target.value);
+                                    setResetPasswordError("");
+                                }}
                             />
                             <div className="eye-icon" onClick={() => setForgotEye2(!forgotEye2)}>
                                 <EyeIcon open={forgotEye2} />
@@ -1373,6 +1508,7 @@ const Loginpage = ({ initialType }) => {
                             onClick={() => {
                                 setForgotPasswordStep(3);
                                 setNewPassword2("");
+                                setResetPasswordError("");
                             }}
                         >
                             ← Back to New Password

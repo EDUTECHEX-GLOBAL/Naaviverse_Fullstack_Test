@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import logo from "../../assets/images/logo/naavi_final_logo2.png";
 import loadinglogo from "./naavi_favicon.png";
 import info from "./info.svg";
+import { validateEmail } from "../../utils/emailValidator";
 import "./loginpage.scss";
 
 /* ── inline icons — no new deps ── */
@@ -46,6 +47,7 @@ const AdminLogin = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [forgotPassword, setForgotPassword] = useState(false);
     const [forgotPasswordStep, setForgotPasswordStep] = useState(1);
+    const [forgotError, setForgotError] = useState('');
     const [newPassword2, setNewPassword2] = useState('');
     const [passwordResetMsg, setPasswordResetMsg] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -75,53 +77,90 @@ const AdminLogin = () => {
         }
     };
 
-    const initiateForgotPassword = () => {
+    const initiateForgotPassword = async () => {
+        const cleanEmail = (email || '').trim().toLowerCase();
+        if (!cleanEmail) {
+            setForgotError("Please enter your admin email address.");
+            return;
+        }
+
+        const emailValidation = validateEmail(cleanEmail);
+        if (!emailValidation.isValid) {
+            setForgotError(emailValidation.message || "Please enter a valid email address.");
+            return;
+        }
+
         setIsLoading(true);
-        let obj = {
-            email: email,
-            app_code: "naavi",
-        };
-        axios
-            .post(
-                `https://gxauth.apimachine.com/gx/user/password/forgot/request`,
-                obj
-            )
-            .then((response) => {
-                let result = response?.data;
-                if (result?.status) {
-                    setIsLoading(false);
-                    setForgotPasswordStep(2);
-                }
-            })
-            .catch((error) => {
-                console.log(error, "error in initiateForgotPassword");
-                setIsLoading(false);
-            });
+        setForgotError('');
+
+        try {
+            const response = await axios.post(
+                `${BASE_URL}/api/admin/forgotPassword`,
+                { email: cleanEmail }
+            );
+
+            const result = response?.data;
+            if (result?.success || response.status === 200) {
+                setForgotPasswordStep(2);
+                setForgotError('');
+            } else {
+                setForgotError(result?.message || "Failed to send reset code. Please enter a registered email.");
+            }
+        } catch (error) {
+            console.error("Error in initiateForgotPassword:", error);
+            const serverMsg = error.response?.data?.message;
+            setForgotError(serverMsg || "No admin account found with this email address. Please enter a registered email.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const submitForgotPassword = () => {
-        let obj = {
-            email: email,
-            code: code,
+    const submitForgotPassword = async () => {
+        if (!code || !newPassword2) {
+            setForgotError("Please enter both the reset code and your new password.");
+            return;
+        }
+
+        if (newPassword2.length < 8) {
+            setForgotError("Password must be at least 8 characters long.");
+            return;
+        }
+
+        setIsLoading(true);
+        setForgotError('');
+
+        const cleanEmail = (email || '').trim().toLowerCase();
+        const obj = {
+            email: cleanEmail,
+            code: code.trim(),
             newPassword: newPassword2,
         };
-        axios
-            .post(
-                `https://gxauth.apimachine.com/gx/user/password/forgot/confirm`,
+
+        try {
+            const response = await axios.post(
+                `${BASE_URL}/api/admin/updatepassword`,
                 obj
-            )
-            .then((response) => {
-                let result = response?.data;
-                if (result?.status) {
-                    setPasswordResetMsg("Password reset successfully");
-                    setForgotPassword(false);
-                    setForgotPasswordStep(1);
-                    setEmail("");
-                }
-            })
-            .catch((error) => {
-                console.log(error, " error in submitForgotPassword");
-            });
+            );
+
+            const result = response?.data;
+            if (result?.success || response.status === 200) {
+                setPasswordResetMsg("Password reset successfully. Please log in with your new credentials.");
+                setForgotPassword(false);
+                setForgotPasswordStep(1);
+                setEmail("");
+                setCode("");
+                setNewPassword2("");
+                setForgotError("");
+            } else {
+                setForgotError(result?.message || "Failed to reset password. Please check your code.");
+            }
+        } catch (error) {
+            console.error("Error in submitForgotPassword:", error);
+            const serverMsg = error.response?.data?.message;
+            setForgotError(serverMsg || "Invalid or expired reset code. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -148,6 +187,13 @@ const AdminLogin = () => {
                                 </div>
                             </div>
 
+                            {forgotError && (
+                                <div className="prompt-div">
+                                    <div><img src={info} alt="" /></div>
+                                    <div>{forgotError}</div>
+                                </div>
+                            )}
+
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
@@ -166,19 +212,19 @@ const AdminLogin = () => {
                                         name="email"
                                         autoComplete="email"
                                         value={email}
-                                        onInput={(e) => { setIsError(false); setEmail(e.target.value); }}
+                                        onInput={(e) => { setIsError(false); setForgotError(""); setEmail(e.target.value); }}
                                     />
                                 </div>
 
                                 <button
                                     type="submit"
-                                    className={`login-btn ${email?.length > 0 ? "" : "disabled"}`}
+                                    className={`login-btn ${email?.length > 0 && !isLoading ? "" : "disabled"}`}
                                     disabled={!email || email.length === 0 || isLoading}
                                 >
-                                    Send Reset Code
+                                    {isLoading ? "Sending Code..." : "Send Reset Code"}
                                 </button>
                             </form>
-                            <div className="ghost-btn" onClick={() => { setForgotPassword(false); setEmail(""); }}>
+                            <div className="ghost-btn" onClick={() => { setForgotPassword(false); setForgotError(""); setEmail(""); }}>
                                 Never Mind
                             </div>
                         </>
@@ -190,6 +236,13 @@ const AdminLogin = () => {
                                     Enter the code we sent, then set a new password.
                                 </div>
                             </div>
+
+                            {forgotError && (
+                                <div className="prompt-div">
+                                    <div><img src={info} alt="" /></div>
+                                    <div>{forgotError}</div>
+                                </div>
+                            )}
 
                             <form
                                 onSubmit={(e) => {
@@ -209,14 +262,17 @@ const AdminLogin = () => {
                                             e.preventDefault();
                                             const pasted = (e.clipboardData || window.clipboardData)?.getData("text") || "";
                                             const cleanDigits = pasted.replace(/[^0-9]/g, "").slice(0, 6);
+                                            setForgotError("");
                                             setCode(cleanDigits);
                                         }}
                                         onChange={e => {
                                             const cleanDigits = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+                                            setForgotError("");
                                             setCode(cleanDigits);
                                         }}
                                         onInput={e => {
                                             const cleanDigits = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+                                            setForgotError("");
                                             setCode(cleanDigits);
                                         }}
                                         maxLength={6}
@@ -231,20 +287,20 @@ const AdminLogin = () => {
                                         type="password"
                                         placeholder="New password"
                                         value={newPassword2}
-                                        onInput={e => setNewPassword2(e.target.value)}
+                                        onInput={e => { setForgotError(""); setNewPassword2(e.target.value); }}
                                     />
                                 </div>
                                 <button
                                     type="submit"
-                                    className={`login-btn ${(code && newPassword2) ? "" : "disabled"}`}
+                                    className={`login-btn ${(code && newPassword2 && !isLoading) ? "" : "disabled"}`}
                                     disabled={!code || !newPassword2 || isLoading}
                                 >
-                                    Submit
+                                    {isLoading ? "Submitting..." : "Submit"}
                                 </button>
                             </form>
                             <div
                                 className="ghost-btn"
-                                onClick={() => { setForgotPassword(false); setForgotPasswordStep(1); setCode(""); setNewPassword2(""); }}
+                                onClick={() => { setForgotPassword(false); setForgotPasswordStep(1); setCode(""); setNewPassword2(""); setForgotError(""); }}
                             >
                                 Cancel
                             </div>
@@ -310,7 +366,7 @@ const AdminLogin = () => {
                                 </div>
                             </div>
 
-                            <div className="forgot" onClick={() => { setForgotPassword(true); setIsError(false); }}>
+                            <div className="forgot" onClick={() => { setForgotPassword(true); setIsError(false); setForgotError(""); setPasswordResetMsg(""); }}>
                                 Forgot Password?
                             </div>
 

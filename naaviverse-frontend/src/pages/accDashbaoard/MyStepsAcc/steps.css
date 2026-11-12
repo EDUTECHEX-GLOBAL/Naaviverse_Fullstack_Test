@@ -489,4 +489,24 @@
   }
 }
 
+/* ── Checkbox Row & Label Spacing ── */
+.checkbox-label,
+.editStepForm_form-group .checkbox-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"],
+.editStepForm_form-group input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 8px 0 0 !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+}
+
+
 

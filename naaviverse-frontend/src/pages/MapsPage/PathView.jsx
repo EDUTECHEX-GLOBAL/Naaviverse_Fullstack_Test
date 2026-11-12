@@ -85,8 +85,8 @@ const PathView = ({ selectedUniversity, onClose }) => {
   --------------------------------------------- */
   const handleSelectPath = async () => {
     try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      const email = user?.user?.email;
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const email = user?.user?.email || user?.email || localStorage.getItem("loginEmail") || "";
 
       const response = await axios.post(`${BASE_URL}/api/fetch/selectpath`, {
         email,

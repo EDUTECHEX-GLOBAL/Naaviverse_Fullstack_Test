@@ -21,7 +21,11 @@ const adminUserSchema = new mongoose.Schema({
     type: String,
     enum: ["admin", "super-admin"],
     default: "admin"
-  }
+  },
+
+  OTP: { type: String, default: null },
+  OTPCreatedTime: { type: Date, default: null },
+  resetOtpVerified: { type: Boolean, default: false }
 
 }, { timestamps: true });
 

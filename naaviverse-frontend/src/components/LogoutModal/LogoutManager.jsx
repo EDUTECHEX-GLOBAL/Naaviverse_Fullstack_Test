@@ -32,6 +32,9 @@ const LogoutManager = () => {
   if (!isOpen) return null;
 
   const handleConfirm = () => {
+    try {
+      window.dispatchEvent(new Event("naavi:logout"));
+    } catch (e) {}
     if (callback) callback();
     setIsOpen(false);
   };

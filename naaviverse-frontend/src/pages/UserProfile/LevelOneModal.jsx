@@ -3,7 +3,12 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { Country, State, City } from "country-state-city";
-import { validatePersonName, sanitizePostalCode, validatePostalCode } from "../../utils/emailValidator";
+import {
+  validatePersonName,
+  sanitizePostalCode,
+  validatePostalCode,
+  getCountryPostalRules,
+} from "../../utils/emailValidator";
 import { SvgCheck, SvgClose } from "../../utils/SvgIcons";
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
@@ -365,73 +370,7 @@ export const getDialCodeOptions = () => {
 };
 
 
-export const getCountryPostalRules = (isoCode) => {
-  const code = (isoCode || "").toUpperCase();
-
-  // Countries that do not use a postal code system
-  const noPostalCountries = new Set([
-    "GD", "AE", "QA", "BS", "BZ", "BJ", "BW", "BF", "BI", "CM", "CF", "KM",
-    "CG", "CD", "CI", "DJ", "DM", "GQ", "ER", "FJ", "GA", "GM", "GH", "GY",
-    "HK", "KI", "KP", "MO", "ML", "MR", "MU", "NR", "RW", "ST", "SC", "SL",
-    "SB", "SO", "SR", "SY", "TL", "TG", "TO", "TV", "UG", "VU", "YE", "ZW"
-  ]);
-
-  if (noPostalCountries.has(code)) {
-    return {
-      label: "Postal Code (Optional)",
-      placeholder: "Optional / Not applicable",
-      required: false,
-    };
-  }
-
-  switch (code) {
-    case "IN":
-      return {
-        label: "PIN Code *",
-        placeholder: "e.g. 500081 (6 digits)",
-        required: true,
-      };
-    case "US":
-      return {
-        label: "ZIP Code *",
-        placeholder: "e.g. 90210 or 90210-1234",
-        required: true,
-      };
-    case "GB":
-      return {
-        label: "Postcode *",
-        placeholder: "e.g. SW1A 1AA",
-        required: true,
-      };
-    case "CA":
-      return {
-        label: "Postal Code *",
-        placeholder: "e.g. K1A 0B1",
-        required: true,
-      };
-    case "AU":
-      return {
-        label: "Postal Code *",
-        placeholder: "e.g. 2000 (4 digits)",
-        required: true,
-      };
-    case "DE":
-    case "FR":
-    case "ES":
-    case "IT":
-      return {
-        label: "Postal Code *",
-        placeholder: "e.g. 5 digits",
-        required: true,
-      };
-    default:
-      return {
-        label: "Postal Code *",
-        placeholder: "Enter postal code",
-        required: true,
-      };
-  }
-};
+export { getCountryPostalRules };
 
 // ── Reusable Custom Select (always opens DOWNWARDS, matches top-box width) ──
 const CustomSelect = ({
@@ -907,8 +846,8 @@ const LevelOneModal = ({
 
   // Postal rules according to selected country
   const postalRules = useMemo(() => {
-    return getCountryPostalRules(selectedCountryObj?.isoCode || selectedPhoneIso);
-  }, [selectedCountryObj, selectedPhoneIso]);
+    return getCountryPostalRules(selectedCountryObj?.isoCode || formData.country || selectedPhoneIso);
+  }, [selectedCountryObj, formData.country, selectedPhoneIso]);
 
   // Parse existing phoneNumber into code + digits on mount or when existingData arrives
   useEffect(() => {
@@ -986,16 +925,19 @@ const LevelOneModal = ({
   const handleCountryChange = (eOrVal) => {
     const countryName = typeof eOrVal === "object" && eOrVal?.target ? eOrVal.target.value : eOrVal;
     if (!countryName) {
-      setFormData((p) => ({ ...p, country: "", state: "", city: "" }));
+      setFormData((p) => ({ ...p, country: "", state: "", city: "", postalCode: "" }));
       return;
     }
-    setFormData((p) => ({ ...p, country: countryName, state: "", city: "" }));
 
     const match = dialCodeOptions.find(
       (c) => c.name.toLowerCase() === countryName.toLowerCase()
     ) || allCountries.find(
       (c) => c.name.toLowerCase() === countryName.toLowerCase()
     );
+
+    const newCountryParam = match?.isoCode || countryName;
+    const sanitizedPostal = formData.postalCode ? sanitizePostalCode(formData.postalCode, newCountryParam) : "";
+    setFormData((p) => ({ ...p, country: countryName, state: "", city: "", postalCode: sanitizedPostal }));
 
     if (match) {
       if (match.isoCode) {
@@ -1174,7 +1116,8 @@ const LevelOneModal = ({
 
   const handlePostalCodeChange = (e) => {
     const raw = e.target.value;
-    const sanitized = sanitizePostalCode(raw);
+    const countryParam = selectedCountryObj?.isoCode || formData.country || selectedPhoneIso;
+    const sanitized = sanitizePostalCode(raw, countryParam);
     setFormData((p) => ({ ...p, postalCode: sanitized }));
 
     clearTimeout(postalTimerRef.current);
@@ -1219,6 +1162,12 @@ const LevelOneModal = ({
   const isFormValid = () => {
     const countryName = currentPhoneCountry?.name || "the selected country";
     const phoneVal = validatePhoneDigits(phoneDigits, currentPhoneCountry, countryName, true);
+    const countryParam = selectedCountryObj?.isoCode || formData.country || selectedPhoneIso;
+    const postalVal = validatePostalCode(
+      formData.postalCode,
+      countryParam,
+      postalRules?.required
+    );
     return (
       nameValidation.isValid &&
       formData.username &&
@@ -1226,7 +1175,7 @@ const LevelOneModal = ({
       formData.country &&
       formData.state &&
       formData.city &&
-      formData.postalCode &&
+      postalVal.isValid &&
       userNameAvailable !== false &&
       (isUsernameUnchanged || userNameAvailable === true)
     );
@@ -1299,7 +1248,13 @@ const LevelOneModal = ({
       }
     }
 
-    const postalValidation = validatePostalCode(formData.postalCode, postalRules.required, "Postal code");
+    const countryParam = selectedCountryObj?.isoCode || formData.country || selectedPhoneIso;
+    const postalValidation = validatePostalCode(
+      formData.postalCode,
+      countryParam,
+      postalRules?.required,
+      postalRules?.label?.replace(/\s*\*$/, "") || "Postal code"
+    );
     if (!postalValidation.isValid) {
       toast.error(postalValidation.message);
       return;
@@ -1328,6 +1283,7 @@ const LevelOneModal = ({
       const fullPhone = `${countryCode} ${phoneDigits.trim()}`;
       const body  = {
         ...formData,
+        postalCode: postalValidation.cleanPostalCode !== undefined ? postalValidation.cleanPostalCode : formData.postalCode,
         email,
         phoneNumber: fullPhone,
       };
@@ -1651,12 +1607,32 @@ const LevelOneModal = ({
               className="up-input"
               type="text"
               name="postalCode"
-              maxLength={10}
+              maxLength={postalRules?.maxLength || 12}
               value={formData.postalCode}
               onChange={handlePostalCodeChange}
               onBlur={handlePostalCodeBlur}
+              onPaste={(e) => {
+                e.preventDefault();
+                const pasted = (e.clipboardData || window.clipboardData).getData("text") || "";
+                const countryParam = selectedCountryObj?.isoCode || formData.country || selectedPhoneIso;
+                const target = e.target;
+                const start = target.selectionStart || 0;
+                const end = target.selectionEnd || 0;
+                const current = formData.postalCode || "";
+                const merged = current.slice(0, start) + pasted + current.slice(end);
+                const sanitized = sanitizePostalCode(merged, countryParam);
+                setFormData((p) => ({ ...p, postalCode: sanitized }));
+                clearTimeout(postalTimerRef.current);
+                const trimmed = sanitized.trim();
+                if (trimmed.length >= 3) {
+                  postalTimerRef.current = setTimeout(() => {
+                    lookupPostalCode(trimmed, formData.country);
+                  }, 400);
+                }
+              }}
               placeholder={postalRules?.placeholder || "Enter postal code"}
               required={postalRules?.required}
+              autoComplete="postal-code"
             />
           </div>
         </div>
